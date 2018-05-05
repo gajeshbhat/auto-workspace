@@ -1,7 +1,9 @@
 Hey There! This is auto-workspace script here to help you setup the perfect developer workspace you want. Please read through the following instructions.
 
-1. Make sure your HARD DRIVE SPACE is more than 60GB for Qt installation.
-2. To Quit this program exit the current terminal session by using Ctrl+w or Ctril+shift+w
-3. Installation time depends upon the speed of the internet connection and the number of apps selected
+1. Use 'tab' to navigate and 'space' to select menu item. 'Enter' on ok and cancel buttons.
+2. Make sure your HARD DRIVE SPACE is more than 60GB for Qt installation.
+3. To Quit this program exit the current terminal session by using Ctrl+w or Ctril+shift+w
+4. Installation time depends upon the speed of the internet connection and the number of apps selected
+
 
 Sit back and relax while the script does the sweaty job for you. Please feel free to point out bugs or improvements. Raise a pull request and i will respond as early as possible. 
