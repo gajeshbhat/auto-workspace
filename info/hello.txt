@@ -6,4 +6,4 @@ Hey There! This is auto-workspace script here to help you setup the perfect deve
 4. Installation time depends upon the speed of the internet connection and the number of apps selected
 
 
-Sit back and relax while the script does the sweaty job for you. Please feel free to point out bugs or improvements. Raise a pull request and i will respond as early as possible. 
+Sit back and relax while the script does the sweaty job for you. Please feel free to point out bugs or improvements. Raise a pull request and i will respond to it as early as possible. 

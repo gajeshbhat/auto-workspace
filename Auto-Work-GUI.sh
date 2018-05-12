@@ -14,6 +14,13 @@ function jumpto
     exit
 }
 
+function ChangeMirrorPack
+{
+#Change the server to main server for update
+printf "Changing the Local Mirror Server to Main Server"
+sudo sed -i 's|http://[a-z]..|http://|g' /etc/apt/sources.list
+}
+
 function RestrictedExtrasPack
 {
 
@@ -335,6 +342,7 @@ sudo whiptail --title "Welcome to Auto-Workspace(Dialog edition)" --textbox info
 : bs_tools:
 Basic_tools=$(whiptail --title "Select Some Basic Tools" --checklist \
 "Choose some basic applications that you want to install" 15 60 8 \
+"ChangeMirrorPack" "Change Mirror to Main Server" OFF \
 "RestrictedExtrasPack" "Restricted Extras" ON \
 "ChromiumPack" "Chromium Browser" OFF \
 "SynapticPack" "Synaptic Package Manager" OFF \
@@ -462,10 +470,6 @@ if [ $exitstatus -ne 0 ]; then
     jumpto additional_tools
 fi
 
-#Change the server to main server for update
-printf "Changing the Local Mirror Server to Main Server"
-sudo sed -i 's|http://[a-z]..|http://|g' /etc/apt/sources.list
-
 sudo apt-get -y update
 sudo apt-get -y upgrade
 
@@ -484,8 +488,13 @@ done
 for i in "${Database_tools[@]}"
 do
    if [[ $i == *"MySQLPack"* ]]; then
-   	eval $i $Password
-   fi
+
+    eval $i $Password
+    
+  else
+    eval $i
+    
+    fi
 
 done
 
