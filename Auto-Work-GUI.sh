@@ -511,6 +511,6 @@ do
 done
 
 echo "Cleaning up ..."
-sudo apt-get autoclean
-sudo apt-get autoremove
+sudo apt-get autoclean -y
+sudo apt-get autoremove -y
 cat art/all_good_bye_ascii.txt
