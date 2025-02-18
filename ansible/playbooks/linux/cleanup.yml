@@ -1,0 +1,15 @@
+---
+- name: Update Package Cache
+  apt:
+    update_cache: yes
+  become: true
+  
+- name: Remove Unnecessary Packages (Autoremove)
+  apt:
+    autoremove: yes
+  become: true
+
+- name: Remove Unnecessary Packages (Autoclean)
+  apt:
+    autoclean: yes
+  become: true

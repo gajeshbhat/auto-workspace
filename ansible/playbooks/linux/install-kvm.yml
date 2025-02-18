@@ -1,0 +1,95 @@
+---
+- name: Check if KVM is Already Installed
+  command: virsh --version
+  register: kvm_check
+  ignore_errors: yes
+  changed_when: false
+
+- name: Display Existing KVM Version (If Installed)
+  debug:
+    msg: "KVM is already installed. Version: {{ kvm_check.stdout }}"
+  when: kvm_check.rc == 0
+
+- name: Install KVM and QEMU Packages
+  apt:
+    name:
+      - qemu-kvm
+      - libvirt-daemon-system
+      - libvirt-clients
+      - bridge-utils
+      - virtinst
+      - virt-manager
+    state: present
+    update_cache: yes
+  when: kvm_check.rc != 0
+
+- name: Ensure Libvirt Service is Enabled and Running
+  systemd:
+    name: libvirtd
+    enabled: yes
+    state: started
+
+- name: Check If User is in Libvirt and KVM Groups
+  command: groups
+  register: user_groups
+  changed_when: false
+
+- name: Add Current User to Libvirt and KVM Groups
+  ansible.builtin.shell: |
+    sudo usermod -aG libvirt,kvm "{{ username }}"
+  args:
+    executable: /bin/bash
+  when: "'libvirt' not in user_groups.stdout or 'kvm' not in user_groups.stdout"
+
+- name: Apply Group Changes Without Logging Out
+  shell: |
+    sg libvirt -c 'newgrp libvirt'
+    sg kvm -c 'newgrp kvm'
+  args:
+    executable: /bin/bash
+  when: "'libvirt' not in user_groups.stdout or 'kvm' not in user_groups.stdout"
+
+- name: Ensure Virt Manager Runs Without Sudo
+  ansible.builtin.lineinfile:
+    path: /etc/libvirt/libvirt.conf
+    regexp: '^uri_default = "qemu:///system"$'
+    line: 'uri_default = "qemu:///session"'
+    state: present
+    backup: yes
+
+- name: Check If Libvirt Socket Exists
+  stat:
+    path: /var/run/libvirt/libvirt-sock
+  register: libvirt_socket
+
+- name: Fix Libvirt Socket Permissions (If Needed)
+  file:
+    path: /var/run/libvirt/libvirt-sock
+    mode: "0777"
+  when: libvirt_socket.stat.exists
+
+- name: Restart Libvirt Services
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+  loop:
+    - libvirtd
+    - virtlogd
+
+- name: Verify KVM Installation
+  command: kvm --version
+  register: kvm_version_output
+  ignore_errors: yes
+  changed_when: false
+
+- name: Verify QEMU Installation
+  command: qemu-system-x86_64 --version
+  register: qemu_version_output
+  ignore_errors: yes
+  changed_when: false
+
+- name: Display KVM and QEMU Versions
+  debug:
+    msg:
+      - "KVM Version: {{ kvm_version_output.stdout | default('Not Found') }}"
+      - "QEMU Version: {{ qemu_version_output.stdout | default('Not Found') }}"

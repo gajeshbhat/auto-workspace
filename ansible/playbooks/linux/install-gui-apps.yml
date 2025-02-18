@@ -1,0 +1,227 @@
+---
+# Ensure the system is updated
+- name: Update APT package index
+  apt:
+    update_cache: yes
+  become: true
+
+# --- Install PowerShell ---
+- name: Install PowerShell as a Snap
+  snap:
+    name: powershell
+    state: present
+    classic: true
+  become: true
+
+# --- Install Postman (via Snap) ---
+- name: Install Postman via Snap
+  snap:
+    name: postman
+    state: present
+  become: true
+
+
+# --- Install Spotify (Snap) ---
+- name: Install Spotify via Snap
+  snap:
+    name: spotify
+    state: present
+  become: true
+
+# Install Skype (Snap)
+- name: Install Skype via Snap
+  snap:
+    name: skype
+    state: present
+  become: true
+
+# --- Install TightVNC Server ---
+- name: Install TightVNC Server
+  apt:
+    name: tightvncserver
+    state: present
+  become: true
+
+# --- Install Data Science Stack (DSS) ---
+- name: Install Data Science Stack from Canonical
+  snap:
+    name: data-science-stack
+    state: present
+  become: true
+
+# --- Install Snapcraft ---
+- name: Install Snapcraft
+  snap:
+    name: snapcraft
+    state: present
+    classic: true
+  become: true
+
+# --- Install Charmcraft (for Snap Development) ---
+- name: Install Charmcraft
+  snap:
+    name: charmcraft
+    state: present
+    classic: true
+  become: true
+
+# --- Install Multipass (for Ubuntu VM management) ---
+- name: Install Multipass
+  snap:
+    name: multipass
+    state: present
+    classic: true
+  become: true
+
+# --- Install LibreOffice (APT) ---
+- name: Install LibreOffice
+  apt:
+    name: libreoffice
+    state: present
+  become: true
+
+# --- Install Bitwarden (Snap) ---
+- name: Install Bitwarden
+  snap:
+    name: bitwarden
+    state: present
+  become: true
+
+# Add the 0 A.D. PPA repository
+- name: Add 0 A.D. PPA repository
+  ansible.builtin.apt_repository:
+    repo: ppa:wfg/0ad
+    state: present
+  become: true
+
+# Update the APT package index
+- name: Update APT package index
+  ansible.builtin.apt:
+    update_cache: yes
+  become: true
+
+# Install 0 A.D.
+- name: Install 0 A.D.
+  ansible.builtin.apt:
+    name: 0ad
+    state: present
+  become: true
+
+# --- Install VLC Media Player (APT) ---
+- name: Install VLC Media Player
+  apt:
+    name: vlc
+    state: present
+  become: true
+
+  # Install transmission (APT)
+- name: Install Transmission
+  apt:
+    name: transmission
+    state: present
+  become: true
+
+  # Install Cheese (APT)
+- name: Install Cheese
+  apt:
+    name: cheese
+    state: present
+  become: true
+
+# Install dependencies for Proton VPN
+- name: Install dependencies
+  apt:
+    name:
+      - wget
+      - apt-transport-https
+      - gnome-shell-extension-appindicator
+      - libayatana-appindicator3-1
+      - gir1.2-ayatanaappindicator3-0.1
+    state: present
+  become: true
+
+# Download the Proton VPN repository package
+- name: Download Proton VPN repository package
+  get_url:
+    url: https://repo.protonvpn.com/debian/dists/stable/main/binary-all/protonvpn-stable-release_1.0.6_all.deb
+    dest: /tmp/protonvpn-stable-release_1.0.6_all.deb
+
+# Install the Proton VPN repository package
+- name: Install Proton VPN repository package
+  apt:
+    deb: /tmp/protonvpn-stable-release_1.0.6_all.deb
+    state: present
+  become: true
+
+# Update APT package index after adding Proton VPN repository
+- name: Update APT package index after adding Proton VPN repository
+  apt:
+    update_cache: yes
+  become: true
+
+# Install the Proton VPN app
+- name: Install Proton VPN
+  apt:
+    name: protonvpn
+    state: present
+  become: true
+
+# Enable the AppIndicator extension
+- name: Enable AppIndicator extension
+  shell: |
+    gnome-extensions enable appindicatorsupport@rgcjonas.gmail.com
+  args:
+    executable: /bin/bash
+  become: true
+
+# Notify user to restart GNOME Shell
+- name: Notify user to restart GNOME Shell
+  ansible.builtin.debug:
+    msg: |
+      The AppIndicator extension has been enabled. Please log out and log back in
+      to apply the changes. Alternatively, press Alt+F2, type 'r', and press Enter
+      to restart the GNOME Shell. Note: The 'r' method is only available when
+      running GNOME under X11, not Wayland.
+
+# Install Zoom Video Conferencing
+- name: Set Zoom download URL and destination path
+  set_fact:
+    zoom_url: "https://zoom.us/client/latest/zoom_amd64.deb"
+    zoom_dest: "/tmp/zoom_amd64.deb"
+
+# Download the Zoom .deb package
+- name: Download Zoom package
+  get_url:
+    url: "{{ zoom_url }}"
+    dest: "{{ zoom_dest }}"
+    mode: '0644'
+  register: download_result
+
+# Verify the download was successful
+- name: Ensure Zoom package was downloaded
+  stat:
+    path: "{{ zoom_dest }}"
+  register: zoom_pkg
+  failed_when: not zoom_pkg.stat.exists
+
+# Install the Zoom package
+- name: Install Zoom
+  apt:
+    deb: "{{ zoom_dest }}"
+  become: true
+
+# Clean up the downloaded package
+- name: Remove downloaded Zoom package
+  file:
+    path: "{{ zoom_dest }}"
+    state: absent
+  when: zoom_pkg.stat.exists
+
+# Install Visual Studio Code using Snap
+- name: Install Visual Studio Code via Snap
+  snap:
+    name: code
+    state: present
+    classic: true
+  become: true
+

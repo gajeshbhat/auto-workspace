@@ -1,0 +1,131 @@
+
+- name: Install Dependencies for VirtualBox
+  apt:
+    name:
+      - curl
+      - wget
+      - gnupg
+      - software-properties-common
+      - dkms
+      - linux-headers-{{ ansible_kernel }}
+    state: present
+    update_cache: yes
+  become: true
+
+- name: Check if VirtualBox GPG Keys already exist
+  stat: path=/usr/share/keyrings/oracle-virtualbox-archive-keyring.gpg
+  register: vbox_gpg_key
+  changed_when: false
+
+- name: Check if VirtualBox Archive GPG Keys already exist
+  stat: path=/usr/share/keyrings/oracle-vbox-archive-keyring.gpg
+  register: vbox_vbox_gpg_key
+  changed_when: false
+
+- name: Add VirtualBox GPG Key
+  shell: |
+    curl -fsSL https://www.virtualbox.org/download/oracle_vbox_2016.asc | sudo gpg --dearmor -o /usr/share/keyrings/oracle-virtualbox-archive-keyring.gpg
+    curl -fsSL https://www.virtualbox.org/download/oracle_vbox.asc | sudo gpg --dearmor -o /usr/share/keyrings/oracle-vbox-archive-keyring.gpg
+  args:
+    executable: /bin/bash
+  when: vbox_gpg_key.stat.exists == false or vbox_vbox_gpg_key.stat.exists == false
+  become: true
+
+- name: Add VirtualBox Repository
+  shell: |
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/oracle-virtualbox-archive-keyring.gpg] https://download.virtualbox.org/virtualbox/debian $(lsb_release -cs) contrib" | sudo tee /etc/apt/sources.list.d/virtualbox.list
+  args:
+    executable: /bin/bash
+  become: true
+
+- name: Update APT Cache
+  apt:
+    update_cache: yes
+  become: true
+
+- name: Install VirtualBox Headless
+  apt:
+    name: virtualbox-7.1
+    state: present
+  become: true
+
+- name: Verify VirtualBox Installation
+  command: vboxmanage --version
+  register: vbox_version
+  changed_when: false
+  ignore_errors: true
+
+- name: Display Installed VirtualBox Version
+  debug:
+    msg: "VirtualBox Version: {{ vbox_version.stdout | default('Not Installed') }}"
+
+- name: Get Latest VirtualBox Version
+  shell: wget -qO- https://download.virtualbox.org/virtualbox/LATEST-STABLE.TXT
+  register: vbox_version
+  changed_when: false
+
+- name: Construct VirtualBox Extension Pack URL (Corrected Format)
+  set_fact:
+    vbox_extpack_url: "https://download.virtualbox.org/virtualbox/{{ vbox_version.stdout }}/Oracle_VirtualBox_Extension_Pack-{{ vbox_version.stdout }}.vbox-extpack"
+
+- name: Verify VirtualBox Extension Pack URL Before Downloading
+  uri:
+    url: "{{ vbox_extpack_url }}"
+    method: HEAD
+    status_code: 200
+  register: vbox_extpack_status
+  ignore_errors: true
+
+- name: Fail If Extension Pack URL Is Not Found
+  fail:
+    msg: "VirtualBox Extension Pack URL {{ vbox_extpack_url }} is not available (404 Not Found). Check https://www.virtualbox.org/wiki/Downloads manually."
+  when: vbox_extpack_status.failed is defined and vbox_extpack_status.failed
+
+- name: Download VirtualBox Extension Pack
+  get_url:
+    url: "{{ vbox_extpack_url }}"
+    dest: "/tmp/Oracle_VirtualBox_Extension_Pack.vbox-extpack"
+  become: true
+
+- name: Get VirtualBox License Hash
+  shell: VBoxManage extpack install --dry-run /tmp/Oracle_VirtualBox_Extension_Pack.vbox-extpack | grep 'SHA256' | awk '{print $NF}'
+  register: vbox_license_hash
+  changed_when: false
+
+- name: Install VirtualBox Extension Pack (Auto-Accept License)
+  shell: echo y | VBoxManage extpack install --accept-license={{ vbox_license_hash.stdout }} --replace /tmp/Oracle_VirtualBox_Extension_Pack.vbox-extpack
+  args:
+    executable: /bin/bash
+  become: true
+
+- name: Ensure vboxusers Group Exists
+  group:
+    name: vboxusers
+    state: present
+  become: true
+
+- name: Add Current User to vboxusers Group
+  user:
+    name: "{{ username }}"
+    groups: vboxusers
+    append: yes
+  become: true
+
+- name: Apply Group Changes Without Logging Out (vboxusers)
+  shell: sg vboxusers -c 'newgrp vboxusers'
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: Restart VirtualBox Services
+  systemd:
+    name: vboxdrv
+    enabled: yes
+    state: restarted
+  become: true
+  ignore_errors: true  # Some systems may not have this service
+
+- name: Verify USB Device Access in VirtualBox
+  shell: VBoxManage list usbhost
+  register: usb_devices
+  changed_when: false

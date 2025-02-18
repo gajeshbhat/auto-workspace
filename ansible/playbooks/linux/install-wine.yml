@@ -1,0 +1,66 @@
+---
+# Ensure the /etc/apt/keyrings directory exists
+- name: Ensure the /etc/apt/keyrings directory exists
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+  become: true
+
+# Add 32-bit architecture support
+- name: Add 32-bit architecture support
+  ansible.builtin.command: dpkg --add-architecture i386
+  register: add_arch_result
+  changed_when: add_arch_result.rc == 0
+  become: true
+
+# Obtain Ubuntu distribution codename
+- name: Obtain Ubuntu distribution codename
+  ansible.builtin.command: lsb_release -cs
+  register: distro_codename
+  changed_when: false
+
+# Remove existing WineHQ repository files
+- name: Remove existing WineHQ repository files
+  ansible.builtin.find:
+    paths: /etc/apt/sources.list.d/
+    patterns: 'winehq-*.sources'
+  register: existing_winehq_repos
+  become: true
+
+- name: Delete old WineHQ repository files
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ existing_winehq_repos.files }}"
+  when: existing_winehq_repos.matched > 0
+  become: true
+
+# Download and add the WineHQ repository key
+- name: Download and add the WineHQ repository key
+  ansible.builtin.get_url:
+    url: https://dl.winehq.org/wine-builds/winehq.key
+    dest: /etc/apt/keyrings/winehq-archive.key
+    mode: '0644'
+  become: true
+
+# Add the WineHQ repository
+- name: Add the WineHQ repository
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64,i386 signed-by=/etc/apt/keyrings/winehq-archive.key] https://dl.winehq.org/wine-builds/ubuntu/ {{ distro_codename.stdout }} main"
+    filename: "winehq-{{ distro_codename.stdout }}"
+    state: present
+
+# Update APT package index
+- name: Update APT package index
+  ansible.builtin.apt:
+    update_cache: yes
+  become: true
+
+# Install WineHQ stable
+- name: Install WineHQ stable
+  ansible.builtin.apt:
+    name: winehq-stable
+    state: present
+    install_recommends: yes
+  become: true

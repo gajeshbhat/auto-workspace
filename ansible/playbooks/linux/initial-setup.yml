@@ -1,0 +1,18 @@
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Upgrade all packages
+  apt:
+    upgrade: dist
+    force_apt_get: yes
+
+- name: Install Snap
+  apt:
+    name: snapd
+    state: present
+
+- name: Ensure Snap Core is Installed
+  shell: |
+    snap install core
+    snap refresh core
