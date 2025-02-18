@@ -1,0 +1,66 @@
+---
+- name: Check if Docker is Already Installed
+  command: docker --version
+  register: docker_check
+  ignore_errors: yes
+  changed_when: false
+
+- name: Install Required Dependencies
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+    state: present
+    update_cache: yes
+
+- name: Check if Docker GPG Key Exists
+  stat:
+    path: /usr/share/keyrings/docker-archive-keyring.gpg
+  register: gpg_key
+
+- name: Add Docker GPG Key (If Missing)
+  ansible.builtin.shell: |
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+  args:
+    executable: /bin/bash
+  when: not gpg_key.stat.exists
+
+- name: Check if Docker Repository Exists
+  stat:
+    path: /etc/apt/sources.list.d/docker.list
+  register: docker_repo
+
+- name: Add Docker APT Repository (If Missing)
+  ansible.builtin.shell: |
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  args:
+    executable: /bin/bash
+  when: not docker_repo.stat.exists
+
+- name: Update APT Cache
+  apt:
+    update_cache: yes
+  
+- name: Install Docker Packages
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+    state: present
+
+- name: Ensure Docker Service is Enabled and Running
+  systemd:
+    name: docker
+    enabled: yes
+    state: started
+
+- name: Add Current User to Docker Group (No Sudo Needed for Docker Commands)
+  ansible.builtin.shell: |
+    usermod -aG docker "{{ username }}"
+    sg docker -c 'newgrp docker'
+  become: yes

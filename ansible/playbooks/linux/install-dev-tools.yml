@@ -1,0 +1,94 @@
+# Install CLI Tools
+- name: Install CLI Tools
+  apt:
+    name:
+      - curl
+      - wget
+      - git
+      - vim
+      - htop
+      - build-essential
+      - unzip
+      - screen
+      - tmux
+      - ifstat
+      - vnstat
+    state: present
+
+# Configure Git global settings
+- name: Configure Git global settings
+  shell: |
+    git config --global user.name "{{ git_global_user_name }}"
+    git config --global user.email "{{ git_global_user_email }}"
+  become: false
+
+# Clone dotfiles repository
+- name: Clone dotfiles repository
+  git:
+    repo: https://github.com/gajeshbhat/dotfiles.git
+    dest: /tmp/dotfiles
+    force: yes
+  become: false
+
+# Copy .vimrc file
+- name: Copy .vimrc file
+  copy:
+    src: /tmp/dotfiles/.vimrc
+    dest: /home/{{ username }}/.vimrc
+    owner: "{{ username }}"
+    group: "{{ username }}"
+    mode: '0644'
+  become: false
+
+# Copy .vimrc.plug file
+- name: Copy .vimrc.plug file
+  copy:
+    src: /tmp/dotfiles/.vimrc.plug
+    dest: /home/{{ username }}/.vimrc.plug
+    owner: "{{ username }}"
+    group: "{{ username }}"
+    mode: '0644'
+  become: false
+
+# Download Vim plug
+- name: Download Vim plug
+  shell: |
+    curl -fLo /home/{{ username }}/.vim/autoload/plug.vim --create-dirs \
+    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+
+
+# Allow .vim access to gajesh
+- name: Allow .vim access to user
+  shell: |
+    chown -R {{ username }}:{{ username }} /home/{{ username }}/.vim
+  become: true
+
+# Install Vim plugins
+- name: Install Vim plugins
+  shell: |
+    vim -c 'PlugInstall' -c 'qa!'
+  become: false
+
+# Copy .screenrc file
+- name: Copy .screenrc file
+  copy:
+    src: /tmp/dotfiles/.screenrc
+    dest: /home/{{ username }}/.screenrc
+    owner: "{{ username }}"
+    group: "{{ username }}"
+    mode: '0644'
+  become: false
+
+- name: Read temporary .bashrc file content
+  slurp:
+    src: /tmp/dotfiles/.bashrc
+  register: temp_bashrc_content
+
+- name: Ensure content from temp .bashrc is present in user's .bashrc
+  blockinfile:
+    path: /home/{{ username }}/.bashrc
+    block: "{{ temp_bashrc_content.content | b64decode }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: Custom .bashrc additions"
+  become: false
+
+

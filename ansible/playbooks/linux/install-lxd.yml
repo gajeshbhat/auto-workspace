@@ -1,0 +1,101 @@
+# --- Install LXD ---
+- name: Install LXD via Snap
+  snap:
+    name: lxd
+    state: present
+  become: true
+
+- name: Initialize LXD
+  command: lxd init --auto
+  become: true
+
+- name: Ensure LXD Service is Enabled and Running
+  systemd:
+    name: snap.lxd.daemon
+    enabled: yes
+    state: started
+  become: true
+
+# --- Install MicroK8s ---
+- name: Install MicroK8s via Snap (Classic Confinement)
+  snap:
+    name: microk8s
+    state: present
+    classic: true
+  become: true
+
+- name: Ensure MicroK8s is Ready
+  command: microk8s status --wait-ready
+  become: true
+  changed_when: false
+
+- name: Enable MicroK8s Add-ons
+  command: microk8s enable dns storage
+  become: true
+  changed_when: false
+
+- name: Ensure inotify max_user_watches is set correctly
+  blockinfile:
+    path: /etc/sysctl.conf
+    block: |
+      fs.inotify.max_user_watches=1048576
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: Increase inotify watches"
+  become: true
+
+- name: Apply sysctl changes
+  command: sysctl --system
+  become: true
+
+- name: Ensure the user has necessary permissions to access MicroK8s
+  shell: |
+    usermod -a -G microk8s "{{ username }}"
+    chown -R "{{ username }}" ~/.kube
+    sg microk8s -c "newgrp microk8s"
+  become: true
+
+# --- Copy daemon.json file for Docker ---
+- name: Copy daemon.json file for Docker
+  copy:
+    src: ./config/docker-daemon.json
+    dest: /etc/docker/daemon.json
+  become: true
+
+- name: Restart Docker Service
+  systemd:
+    name: docker
+    state: restarted
+
+# --- Install MicroCloud ---
+- name: Install MicroCloud via Snap
+  snap:
+    name: microcloud
+    state: present
+  become: true
+
+# --- Install MicroOVN ---
+- name: Install MicroOVN via Snap
+  snap:
+    name: microovn
+    state: present
+  become: true
+
+# --- Install MicroCeph ---
+- name: Install MicroCeph via Snap
+  snap:
+    name: microceph
+    state: present
+  become: true
+
+# --- Install Juju ---
+- name: Install Juju via Snap
+  snap:
+    name: juju
+    state: present
+  become: true
+
+# --- Install MAAS ---
+- name: Install MAAS via Snap
+  snap:
+    name: maas
+    state: present
+  become: true
