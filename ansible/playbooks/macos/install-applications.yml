@@ -8,8 +8,20 @@
   become: false
   ignore_errors: yes
 
-- name: Check if Docker is Already Installed
-  command: docker --version
-  register: docker_check
+- name: Install Homebrew Core Packages
+  community.general.homebrew:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ brew_core }}"
+  become: false
   ignore_errors: yes
+
+- name: Check if Mac App Store CLI (mas) is installed
+  command: which mas
+  register: mas_check
   changed_when: false
+
+- name: Install Mac App Store Applications
+  command: mas install {{ item.id }}
+  loop: "{{ mas_applications }}"
+  register: mas_install_result
