@@ -6,8 +6,10 @@
   become: false
   vars:
     username: "{{ lookup('env', 'USER') }}"
-    git_global_user_name: "Your Name"
-    git_global_user_email: "your.email@example.com"
+    git_global_user_name: "Gajesh Bhat"
+    git_global_user_email: "gajeshbhat@gmail.com"
+    brew_core:
+      - homebrew/core/mas
     brew_casks:
       - google-chrome
       - spotify
@@ -25,6 +27,8 @@
       - vim
       - python3
       - rust
+    mas_applications:
+      - { id: 775737590, name: "iA Writer" }
       
   tasks:
     - import_tasks: playbooks/macos/initial-setup.yml
