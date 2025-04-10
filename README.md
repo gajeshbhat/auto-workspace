@@ -1,6 +1,6 @@
 ## Automated Workspace Setup Ubuntu 24.04 LTS
 
-Automated workspace setup tool for Ubuntu 24.04 LTS (macOS and Windows 11 Support coming soon) that configures development environments, virtualization tools, and GUI applications using Ansible. Please make sure you have atleast 8GB of RAM and 30GB of free disk space before running the script.
+Automated workspace setup tool for Ubuntu 24.04 LTS (Windows 11 Support coming soon) that configures development environments, virtualization tools, and GUI applications using Ansible. Please make sure you have atleast 8GB of RAM and 30GB of free disk space before running the script.
 
 ### Features
 1. Docker + Docker Compose
