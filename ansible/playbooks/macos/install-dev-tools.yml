@@ -1,0 +1,15 @@
+---
+- name: Install Development Tools via Homebrew
+  community.general.homebrew:
+    name: "{{ item }}"
+    state: present
+    install_options: "{{ 'formula' if item != 'docker' else '' }}"
+  loop: "{{ brew_formulae }}"
+  become: false
+  ignore_errors: yes
+
+- name: Configure Git global settings
+  shell: |
+    git config --global user.name "{{ git_global_user_name }}"
+    git config --global user.email "{{ git_global_user_email }}"
+  become: false

@@ -1,0 +1,12 @@
+---
+- name: Check if Multipass is installed
+  command: which multipass
+  register: multipass_check
+  ignore_errors: yes
+  changed_when: false
+
+- name: Configure Multipass
+  shell: |
+    multipass set local.driver=virtualbox
+  ignore_errors: yes
+  when: multipass_check.rc == 0

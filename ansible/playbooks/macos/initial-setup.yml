@@ -1,0 +1,33 @@
+---
+- name: Check if Xcode Command Line Tools are installed
+  command: xcode-select -p
+  register: xcode_select
+  ignore_errors: yes
+  changed_when: false
+
+- name: Install Xcode Command Line Tools
+  command: xcode-select --install
+  register: xcode_install
+  failed_when: xcode_install.rc != 0 and xcode_install.stderr.find('already installed') == -1
+  changed_when: xcode_install.rc == 0
+  ignore_errors: yes
+  when: xcode_select.rc != 0
+
+- name: Check if full Xcode is installed
+  stat:
+    path: "/Applications/Xcode.app"
+  register: xcode_app
+
+- name: Accept Xcode License
+  shell: xcodebuild -license accept
+  become: true
+  ignore_errors: yes
+  when: xcode_app.stat.exists
+
+- name: Accept Command Line Tools License
+  shell: |
+    sudo xcodebuild -license accept
+    sudo xcode-select --reset
+  become: true
+  ignore_errors: yes
+  when: not xcode_app.stat.exists
