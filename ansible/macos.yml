@@ -1,0 +1,34 @@
+---
+- name: MacOS Workstation Setup (15.4)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+  vars:
+    username: "{{ lookup('env', 'USER') }}"
+    git_global_user_name: "Your Name"
+    git_global_user_email: "your.email@example.com"
+    brew_casks:
+      - google-chrome
+      - spotify
+      - visual-studio-code
+      - vlc
+      - transmission
+      - protonvpn
+      - virtualbox
+      - multipass
+      - docker
+    brew_formulae:
+      - screen
+      - git
+      - htop
+      - vim
+      - python3
+      - rust
+      
+  tasks:
+    - import_tasks: playbooks/macos/initial-setup.yml
+    - import_tasks: playbooks/macos/install-applications.yml
+    - import_tasks: playbooks/macos/install-dev-tools.yml
+    - import_tasks: playbooks/macos/configure-environments.yml
+    - import_tasks: playbooks/macos/cleanup.yml

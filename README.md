@@ -1,4 +1,4 @@
-## Automated Workspace Setup
+## Automated Workspace Setup Ubuntu 24.04 LTS
 
 Automated workspace setup tool for Ubuntu 24.04 LTS (macOS and Windows 11 Support coming soon) that configures development environments, virtualization tools, and GUI applications using Ansible. Please make sure you have atleast 8GB of RAM and 30GB of free disk space before running the script.
 
@@ -64,3 +64,61 @@ Notes
 2. Verify installations using version check commands
 3. Configure additional application settings as needed
 4. The playbook handles most configurations automatically, but some applications may need additional setup through their GUIs.
+
+## Automated Workspace Setup for macOS 15.4
+
+Automated workspace setup tool for macOS 15.4 that configures development environments and applications using Ansible. Please make sure you have at least 16GB of RAM and 60GB of free disk space before running the script.
+
+### Features
+1. Docker + Docker CLI
+2. VirtualBox + Multipass
+3. Development Tools (Git, Vim, Screen, Python3, Rust)
+4. GUI Applications (Chrome, VS Code, Spotify, VLC)
+5. Productivity Tools (Adobe Reader, ProtonVPN)
+6. Package Manager (Homebrew)
+7. Command Line Tools (Xcode)
+8. Automated cleanup
+
+## Prerequisites
+1. Install [Homebrew](https://brew.sh/). You can run the following command in your terminal:
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+Press `Enter` to continue and follow the prompts. Please make sure to run the following commands (or similar commands that the brew installer outputs) after the installation is complete to add Homebrew to your PATH:
+```bash
+echo >> /Users/gajesh/.zprofile
+echo 'eval "$(/usr/local/bin/brew shellenv)"' >> /Users/gajesh/.zprofile
+eval "$(/usr/local/bin/brew shellenv)"
+```
+
+2. Install [Ansible](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html). You can run the following command in your terminal:
+```bash
+brew install ansible
+```
+Check it's installed correctly:
+```bash
+ansible --version
+```
+
+3. Clone this repository:
+```bash
+git clone https://github.com/gajeshbhat/auto-workspace.git
+cd auto-workspace/ansible
+```
+
+4. Update the `macos.yml` file with your Git global user name, and email:
+```yaml
+vars:
+  git_global_user_name: "Your Name"
+  git_global_user_email: "your.email@example.com"
+```
+
+5. Run the playbook:
+```bash
+ansible-playbook macos.yml --ask-become-pass # Enter your sudo password when prompted for BECOME Password and Enter password as requested
+```
+
+6. Check mode (dry run) to see what would change
+```bash
+ansible-playbook macos.yml --check --ask-become-pass
+```

@@ -1,0 +1,30 @@
+---
+- name: Cleanup Homebrew
+  command: brew cleanup
+  ignore_errors: yes
+
+- name: Clear Homebrew cache
+  file:
+    path: "~/Library/Caches/Homebrew"
+    state: absent
+  ignore_errors: yes
+
+- name: Remove Homebrew downloads
+  file:
+    path: "~/Library/Caches/Homebrew/downloads"
+    state: absent
+  ignore_errors: yes
+
+- name: Clear system logs
+  shell: |
+    sudo rm -rf /private/var/log/asl/*.asl
+    sudo rm -rf /Library/Logs/DiagnosticReports/*
+    sudo rm -rf /Library/Logs/Adobe/*
+    sudo rm -rf ~/Library/Containers/com.apple.mail/Data/Library/Logs/Mail/*
+    sudo rm -rf ~/Library/Logs/CoreSimulator/*
+  become: true
+  ignore_errors: yes
+
+- name: Empty trash
+  shell: rm -rf ~/.Trash/*
+  ignore_errors: yes
