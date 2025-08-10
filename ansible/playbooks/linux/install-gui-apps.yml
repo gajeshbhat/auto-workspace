@@ -80,22 +80,22 @@
     state: present
   become: true
 
-# Add the 0 A.D. PPA repository
-- name: Add 0 A.D. PPA repository
-  ansible.builtin.apt_repository:
+# Add 0ad PPA
+- name: Add 0ad PPA
+  apt_repository:
     repo: ppa:wfg/0ad
     state: present
   become: true
 
-# Update the APT package index
-- name: Update APT package index
-  ansible.builtin.apt:
+# Update APT package index after adding 0ad PPA
+- name: Update APT package index after adding 0ad PPA
+  apt:
     update_cache: yes
   become: true
 
 # Install 0 A.D.
 - name: Install 0 A.D.
-  ansible.builtin.apt:
+  apt:
     name: 0ad
     state: present
   become: true
@@ -122,7 +122,7 @@
   become: true
 
 # Install dependencies for Proton VPN
-- name: Install dependencies
+- name: Install dependencies for Proton VPN
   apt:
     name:
       - wget
@@ -133,17 +133,20 @@
     state: present
   become: true
 
-# Download the Proton VPN repository package
-- name: Download Proton VPN repository package
-  get_url:
-    url: https://repo.protonvpn.com/debian/dists/stable/main/binary-all/protonvpn-stable-release_1.0.6_all.deb
-    dest: /tmp/protonvpn-stable-release_1.0.6_all.deb
+# Add Proton VPN GPG key manually (more reliable than the .deb package)
+- name: Add Proton VPN GPG key
+  shell: |
+    wget -qO- https://repo.protonvpn.com/debian/public_key.asc | gpg --dearmor | sudo tee /usr/share/keyrings/protonvpn-stable-archive-keyring.gpg > /dev/null
+  args:
+    creates: /usr/share/keyrings/protonvpn-stable-archive-keyring.gpg
+  become: true
 
-# Install the Proton VPN repository package
-- name: Install Proton VPN repository package
-  apt:
-    deb: /tmp/protonvpn-stable-release_1.0.6_all.deb
+# Add Proton VPN repository
+- name: Add Proton VPN repository
+  apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/protonvpn-stable-archive-keyring.gpg] https://repo.protonvpn.com/debian stable main"
     state: present
+    filename: protonvpn-stable
   become: true
 
 # Update APT package index after adding Proton VPN repository
@@ -218,3 +221,46 @@
     classic: true
   become: true
 
+# Install Simple Scan (document scanning application)
+- name: Install Simple Scan (document scanning application)
+  apt:
+    name: simple-scan
+    state: present
+  become: true
+
+# Install Telegram Desktop
+- name: Install Telegram Desktop
+  snap:
+    name: telegram-desktop
+    state: present
+  become: true
+
+- name: Create directory for Mullvad GPG key
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: Download and add Mullvad GPG key
+  shell: |
+    curl -fsSL https://repository.mullvad.net/deb/mullvad-keyring.asc | gpg --dearmor -o /etc/apt/keyrings/mullvad-keyring.gpg
+  become: true
+
+- name: Add Mullvad repository
+  apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/mullvad-keyring.gpg arch=amd64] https://repository.mullvad.net/deb/stable {{ ansible_distribution_release }} main"
+    state: present
+    filename: mullvad
+  become: true
+
+- name: Update APT cache after adding Mullvad repository
+  apt:
+    update_cache: yes
+  become: true
+
+- name: Install Mullvad Browser
+  apt:
+    name: mullvad-browser
+    state: present
+  become: true

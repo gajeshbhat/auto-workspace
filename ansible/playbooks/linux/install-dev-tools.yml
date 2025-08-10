@@ -15,6 +15,85 @@
       - vnstat
     state: present
 
+- name: Check if rustup is already installed
+  stat:
+    path: /home/{{ username }}/.cargo/bin/rustup
+  register: rustup_installed
+  become: false
+
+- name: Download rustup installer
+  get_url:
+    url: https://sh.rustup.rs
+    dest: /tmp/rustup-init.sh
+    mode: '0755'
+  when: not rustup_installed.stat.exists
+  become: false
+
+- name: Install Rust via rustup with stable toolchain
+  shell: |
+    /tmp/rustup-init.sh -y --default-toolchain stable
+  environment:
+    CARGO_HOME: /home/{{ username }}/.cargo
+    RUSTUP_HOME: /home/{{ username }}/.rustup
+  when: not rustup_installed.stat.exists
+  become: false
+
+- name: Set ownership of Rust directories
+  file:
+    path: "{{ item }}"
+    owner: "{{ username }}"
+    group: "{{ username }}"
+    recurse: yes
+  loop:
+    - /home/{{ username }}/.cargo
+    - /home/{{ username }}/.rustup
+  when: not rustup_installed.stat.exists
+
+- name: Add Rust to PATH in .bashrc
+  lineinfile:
+    path: /home/{{ username }}/.bashrc
+    line: 'export PATH="$HOME/.cargo/bin:$PATH"'
+    create: yes
+    state: present
+  become: false
+
+- name: Source Rust environment in .bashrc
+  lineinfile:
+    path: /home/{{ username }}/.bashrc
+    line: 'source "$HOME/.cargo/env"'
+    create: yes
+    state: present
+  become: false
+
+- name: Clean up rustup installer
+  file:
+    path: /tmp/rustup-init.sh
+    state: absent
+  when: not rustup_installed.stat.exists
+
+- name: Install Android SDK platform tools (ADB and Fastboot)
+  apt:
+    name:
+      - android-tools-adb
+      - android-tools-fastboot
+    state: present
+    update_cache: yes
+  become: true
+
+- name: Add user to plugdev group for Android device access
+  user:
+    name: "{{ username }}"
+    groups: plugdev
+    append: yes
+  become: true
+
+- name: Install astral-uv (Python developer environment for Canonical Testflinger)
+  snap:
+    name: astral-uv
+    state: present
+    classic: true
+  become: true
+
 # Configure Git global settings
 - name: Configure Git global settings
   shell: |

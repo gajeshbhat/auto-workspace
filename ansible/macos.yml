@@ -7,7 +7,7 @@
   vars:
     username: "{{ lookup('env', 'USER') }}"
     git_global_user_name: "Gajesh Bhat"
-    git_global_user_email: "gajeshbhat@gmail.com"
+    git_global_user_email: "myemail@example.com"
     brew_core:
       - homebrew/core/mas
     brew_casks:
