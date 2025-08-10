@@ -3,9 +3,9 @@
   hosts: localhost
   become: yes
   vars:
-    username: ubuntu
-    git_global_user_name: "Ubuntu Test"
-    git_global_user_email: "UbuntuTest@localhost"
+    username: "{{ lookup('env', 'USER') }}"
+    git_global_user_name: "Gajesh Bhat"
+    git_global_user_email: "myemail@example.com"
   tasks:
     - import_tasks: playbooks/linux/initial-setup.yml
     - import_tasks: playbooks/linux/install-docker.yml

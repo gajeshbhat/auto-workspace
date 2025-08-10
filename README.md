@@ -1,6 +1,6 @@
 ## Automated Workspace Setup Ubuntu 24.04 LTS
 
-Automated workspace setup tool for Ubuntu 24.04 LTS (Windows 11 Support coming soon) that configures development environments, virtualization tools, and GUI applications using Ansible. Please make sure you have atleast 8GB of RAM and 30GB of free disk space before running the script.
+Automated workspace setup tool for Ubuntu 24.04 LTS that configures development environments, virtualization tools, and GUI applications using Ansible. Please make sure you have atleast 8GB of RAM and 30GB of free disk space before running the script.
 
 ### Features
 1. Docker + Docker Compose
@@ -26,14 +26,14 @@ sudo apt install git ansible -y
 ```bash
 git clone https://github.com/yourusername/Auto-Workspace-GUI.git
 cd Auto-Workspace-GUI
-``` 
+```
 3. Update the `ansible/linux.yml` file with your username, Git global user name, and email:
 
 ```yaml
 vars:
   username: yourusername
   git_user_name: "Your Name"
-  git_user_email: ""
+  git_user_email: "your.email@example.com"
 ```
 
 4. Run the playbook:
@@ -64,6 +64,70 @@ Notes
 2. Verify installations using version check commands
 3. Configure additional application settings as needed
 4. The playbook handles most configurations automatically, but some applications may need additional setup through their GUIs.
+
+### Testing with Multipass (Ubuntu 24.04)
+
+Use the included script to test the playbooks in a clean Ubuntu 24.04 VM provisioned by Multipass.
+
+What it does:
+- Launches a fresh VM (Ubuntu 24.04)
+- Copies this repository into the VM
+- Installs Ansible and prerequisites
+- Runs ansible/linux.yml inside the VM
+- Optionally keeps or deletes the VM when finished
+
+Requirements:
+- Multipass installed on your host: https://multipass.run/
+- Internet connectivity from the host and VM
+
+Quick start:
+- Make executable:
+  - chmod +x scripts/test-isolated-playbook.sh
+- Run (auto-deletes VM after run):
+  - ./scripts/test-isolated-playbook.sh
+
+Options:
+- -n name   VM name (default: aw-test-<timestamp>)
+- -c cpus   CPU count (default: 2)
+- -m mem    Memory (default: 12G)
+- -d disk   Disk size (default: 50G)
+- -k        Keep the VM after the run (default: delete)
+- -v        Verbose Ansible output (-vvv)
+
+Examples:
+- Keep VM and enable verbose logs:
+  - ./scripts/test-isolated-playbook.sh -k -v
+- Custom resources:
+  - ./scripts/test-isolated-playbook.sh -n my-test -c 4 -m 8G -d 30G
+
+Isolating what runs:
+- This script always runs ansible/linux.yml. To limit scope, comment out unrelated import_tasks in ansible/linux.yml and keep only the entries you want to validate (e.g., install-dev-tools.yml, install-gui-apps.yml).
+
+Sudo handling:
+- The script detects if passwordless sudo is available inside the VM.
+  - If passwordless: runs without prompting
+  - Otherwise: runs ansible-playbook with -K (ask-become-pass). When prompted, press Enter if the VM is configured for passwordless sudo; otherwise enter the VM's sudo password.
+
+Inspecting the VM (when keeping it):
+- Open a shell: multipass shell <vm-name>
+- Re-run the playbook:
+  - cd ~/auto-workspace
+  - ANSIBLE_STDOUT_CALLBACK=yaml ansible-playbook -i ansible/hosts ansible/linux.yml -K -vvv
+- Stop/delete when done:
+  - multipass stop <vm-name>
+  - multipass delete <vm-name>
+  - multipass purge
+
+Troubleshooting:
+- Multipass not found: install from https://multipass.run/
+- VM launch failures: ensure virtualization is enabled (KVM/Hyper-V/etc.)
+- Apt/network hiccups: retry; mirrors can have temporary issues
+- Proton VPN repo key issues: ensure playbook uses modern signed-by keyring
+- 0 A.D. PPA warnings about trusted.gpg: prefer a repo entry with an explicit signed-by keyring
+
+Notes:
+- ansible/linux.yml may reference your environment for username (e.g., lookup('env','USER')).
+- Script defaults: CPUs=2, MEM=12G, DISK=50G (override with flags).
 
 ## Automated Workspace Setup for macOS 15.4
 
