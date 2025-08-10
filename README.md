@@ -41,6 +41,7 @@ vars:
 ```bash
 ansible-playbook -i ansible/hosts ansible/linux.yml
 # use --ask-become-pass argument with the above command if you are not running as root
+# Takes ~40 minutes to complete depending on your internet speed and system specifications.
 ```
 ### What Gets Installed
 
@@ -52,9 +53,7 @@ ansible-playbook -i ansible/hosts ansible/linux.yml
 
 Notes
  1. Currently only supports Ubuntu 24.04 LTS
- 2. macOS and Windows support planned for future releases
- 3. Some tasks require user interaction for license agreements
- 4. System reboot may be required after installation
+ 2. System reboot may be required after installation
 
 ### Post-Installation
 
