@@ -1,11 +1,13 @@
 ---
 - name: Check if Multipass is installed
+  tags: [virtualization, multipass]
   command: which multipass
   register: multipass_check
   ignore_errors: yes
   changed_when: false
 
-- name: Configure Multipass
+- name: Configure Multipass (skippable inside VM)
+  tags: [virtualization, multipass]
   shell: |
     multipass set local.driver=virtualbox
   ignore_errors: yes

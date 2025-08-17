@@ -1,10 +1,18 @@
 ---
-- name: Install Development Tools via Homebrew
+- name: Install Dev Tools (non-Docker)
+  tags: [devtools]
   community.general.homebrew:
     name: "{{ item }}"
     state: present
-    install_options: "{{ 'formula' if item != 'docker' else '' }}"
-  loop: "{{ brew_formulae }}"
+  loop: "{{ brew_formulae | difference(['docker']) }}"
+  become: false
+  ignore_errors: yes
+
+- name: Install Docker (skippable inside VM)
+  tags: [virtualization, docker]
+  community.general.homebrew:
+    name: docker
+    state: present
   become: false
   ignore_errors: yes
 

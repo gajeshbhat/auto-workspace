@@ -1,10 +1,23 @@
 ---
-- name: Install Homebrew Cask Applications
+- name: Install non-virtualization Homebrew Cask apps
+  tags: [apps]
   community.general.homebrew_cask:
     name: "{{ item }}"
     state: present
-    accept_external_apps: yes  # Accept if app is already installed
-  loop: "{{ brew_casks }}"
+    accept_external_apps: yes
+  # everything except virtualization-related casks
+  loop: "{{ brew_casks | difference(['virtualbox','multipass','docker']) }}"
+  become: false
+  ignore_errors: yes
+
+- name: Install virtualization Homebrew Cask apps (skippable inside VM)
+  tags: [virtualization, virtualbox, multipass, docker]
+  community.general.homebrew_cask:
+    name: "{{ item }}"
+    state: present
+    accept_external_apps: yes
+  # only the virtualization casks that are present in brew_casks
+  loop: "{{ ['virtualbox','multipass','docker'] | intersect(brew_casks) }}"
   become: false
   ignore_errors: yes
 
