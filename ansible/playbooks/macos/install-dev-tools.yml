@@ -21,3 +21,23 @@
     git config --global user.name "{{ git_global_user_name }}"
     git config --global user.email "{{ git_global_user_email }}"
   become: false
+
+- name: Install pipx for dotrun installation
+  tags: [devtools, dotrun]
+  community.general.homebrew:
+    name: pipx
+    state: present
+  become: false
+  ignore_errors: yes
+
+- name: Ensure pipx is in PATH
+  tags: [devtools, dotrun]
+  shell: pipx ensurepath
+  become: false
+  ignore_errors: yes
+
+- name: Install dotrun using pipx
+  tags: [devtools, dotrun]
+  shell: pipx install dotrun
+  become: false
+  ignore_errors: yes

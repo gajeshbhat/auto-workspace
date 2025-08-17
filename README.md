@@ -45,11 +45,18 @@ ansible-playbook -i ansible/hosts ansible/linux.yml
 ```
 ### What Gets Installed
 
+#### Linux (Ubuntu 24.04 LTS)
 1. Virtualization: Docker, KVM, LXD, VirtualBox
 2. Development: Git, Vim, Screen, Tmux, Build Tools, Also some of my dotfiles. But these are very lightweight and some basic configurations.
 3. GUI Apps: VS Code, Spotify, Postman, VLC, LibreOffice, etc.
 4. Cloud Tools: Multipass, Snapcraft, MicroK8s
 5. Productivity: Zoom, Skype, Bitwarden
+
+#### macOS (15.4)
+1. Virtualization: Docker, VirtualBox, Multipass
+2. Development: Git, Vim, Screen, Python3, Rust
+3. GUI Apps: Chrome, VS Code, Spotify, VLC, Transmission, ProtonVPN
+4. Productivity: iA Writer (via Mac App Store)
 
 Notes
  1. Currently only supports Ubuntu 24.04 LTS
@@ -132,15 +139,18 @@ Notes:
 
 Automated workspace setup tool for macOS 15.4 that configures development environments and applications using Ansible. Please make sure you have at least 16GB of RAM and 60GB of free disk space before running the script.
 
+**🧪 Testing:** Use the included UTM scripts to test in a macOS VM - see [Testing with UTM](#testing-with-utm-macos-virtual-machine) section below.
+
 ### Features
 1. Docker + Docker CLI
 2. VirtualBox + Multipass
-3. Development Tools (Git, Vim, Screen, Python3, Rust)
+3. Development Tools (Git, Vim, Screen, Python3, Rust, pipx, Dotrun)
 4. GUI Applications (Chrome, VS Code, Spotify, VLC)
 5. Productivity Tools (Adobe Reader, ProtonVPN)
 6. Package Manager (Homebrew)
 7. Command Line Tools (Xcode)
-8. Automated cleanup
+8. Qt Framework (optional manual installation)
+9. Automated cleanup
 
 ## Prerequisites
 1. Install [Homebrew](https://brew.sh/). You can run the following command in your terminal:
@@ -176,12 +186,155 @@ vars:
   git_global_user_email: "your.email@example.com"
 ```
 
+**Note for VM Testing:** If you plan to test this playbook in a VM (like UTM), comment out the `mas_applications` section in `macos.yml` as Mac App Store apps require Apple ID authentication and may not work in VMs.
+
 5. Run the playbook:
 ```bash
 ansible-playbook macos.yml --ask-become-pass # Enter your sudo password when prompted for BECOME Password and Enter password as requested
+```
+
+To install only specific components, you can use tags:
+```bash
+# Install only development tools
+ansible-playbook macos.yml --ask-become-pass --tags "devtools"
+
+# Install only GUI applications
+ansible-playbook macos.yml --ask-become-pass --tags "gui"
 ```
 
 6. Check mode (dry run) to see what would change
 ```bash
 ansible-playbook macos.yml --check --ask-become-pass
 ```
+
+### Manual Qt Installation (Optional)
+
+Qt installation requires interactive authentication and is provided as a separate script. After running the main Ansible playbook, you can optionally install Qt:
+
+```bash
+# Run the Qt installation script
+bash ansible/playbooks/macos/install-qt.sh
+
+# Or with command line arguments (to avoid interactive prompts)
+bash ansible/playbooks/macos/install-qt.sh --email your-qt-account@example.com --password your-password
+
+# Or with environment variables
+QT_EMAIL=your-qt-account@example.com QT_PASSWORD=your-password bash ansible/playbooks/macos/install-qt.sh
+```
+
+**What the Qt script installs:**
+- Qt 6.9.1 Full SDK (includes Qt Creator, CMake, Ninja)
+- Automatically adds Qt to your PATH
+- Privacy-respecting defaults (disables telemetry)
+- Verifies installation with qmake version check
+
+**Requirements for Qt installation:**
+- Qt account (free registration at https://www.qt.io/)
+- Internet connection for downloading (~2GB+ installation)
+- Sufficient disk space (~10GB+ for full SDK)
+
+
+
+### Testing with UTM (macOS Virtual Machine)
+
+Use the included UTM scripts to test the macOS playbooks in a clean macOS VM on Apple Silicon Macs.
+
+#### What it does:
+- Creates a macOS VM using UTM with virtio-fs file sharing
+- Shares your repository with the VM for live testing
+- Installs prerequisites (Xcode Command Line Tools, Homebrew, Ansible)
+- Runs the macOS playbook inside the VM
+- Automatically skips virtualization-related packages that don't work in VMs
+
+#### Requirements:
+- **UTM** installed on your Mac: https://mac.getutm.app/
+- **macOS IPSW file** for the version you want to test
+  - Download from: https://ipsw.me/ (e.g., https://ipsw.me/Mac16,8 for Mac Studio)
+  - Choose the macOS version that matches your testing needs
+- **Apple Silicon Mac** (recommended for best performance)
+- At least **8GB RAM** and **64GB free disk space** for the VM
+
+#### Quick Start:
+
+1. **Launch UTM setup helper:**
+   ```bash
+   ./scripts/utm/quickstart-utm-macos.sh --open
+   ```
+
+2. **Download macOS IPSW (if needed):**
+   - Visit https://ipsw.me/ and select your Mac model (e.g., https://ipsw.me/Mac16,8 for Mac Studio)
+   - Download the macOS version you want to test (e.g., macOS 15.4)
+   - IPSW files are large (10-15GB), so ensure good internet connection
+
+3. **Create VM in UTM GUI:**
+   - Click "+" → Virtualize → macOS
+   - Select your downloaded IPSW file when prompted
+   - Name the VM (e.g., `macos-ci`)
+   - Assign resources: 4 CPU cores, 8GB RAM, 64GB disk
+   - **Networking:** NAT
+   - **Sharing:** Add your repository root as a shared directory
+
+4. **Complete macOS Setup:**
+   - Start the VM and complete Setup Assistant
+   - Create a user account (enable auto-login for easier testing)
+
+5. **Run Ansible inside the VM:**
+   ```bash
+   # In the macOS VM Terminal:
+   sudo bash "/Volumes/My Shared Files/auto-workspace/scripts/macos-guest/run-ansible.sh"
+   ```
+
+#### Important: Mac App Store Applications
+
+**Before testing in a VM, you MUST comment out `mas_applications` in `ansible/macos.yml`:**
+
+```yaml
+# Comment out these lines for VM testing:
+# mas_applications:
+#   - { id: 775737590, name: "iA Writer" }
+```
+
+**Why?** Mac App Store applications require:
+- Apple ID login
+- App Store authentication
+- May not work properly in VMs
+- Can cause the playbook to hang or fail
+
+#### VM-Specific Behavior:
+
+The `run-ansible.sh` script automatically:
+- Skips virtualization tools (`--skip-tags virtualization,docker,virtualbox,multipass`)
+- Installs Xcode Command Line Tools
+- Sets up Homebrew with proper paths
+- Runs the playbook with verbose output
+
+#### Iterative Testing:
+
+After making changes to your playbook:
+1. Save changes on your host Mac
+2. Re-run the guest script (no need to restart VM):
+   ```bash
+   sudo bash "/Volumes/My Shared Files/auto-workspace/scripts/macos-guest/run-ansible.sh"
+   ```
+
+#### UTM Troubleshooting:
+
+- **Share not visible:** Check VM Settings → Sharing has your folder added
+- **Performance issues:** Ensure you're using Apple Silicon Mac with adequate RAM
+- **File sharing problems:** UTM auto-mounts shares at `/Volumes/My Shared Files/`
+- **Network issues:** Ensure VM networking is set to NAT mode
+- **Playbook hangs:** Check if `mas_applications` are commented out
+```
+
+#### UTM Quick Reference:
+
+| Step | Command/Action |
+|------|----------------|
+| 0. Download IPSW | Visit https://ipsw.me/ (e.g., https://ipsw.me/Mac16,8) |
+| 1. Setup UTM | `./scripts/utm/quickstart-utm-macos.sh --open` |
+| 2. Create VM | Use UTM GUI with downloaded IPSW + NAT networking + shared directory |
+| 3. Prepare for testing | Comment out `mas_applications` in `ansible/macos.yml` |
+| 4. Run in VM | `sudo bash "/Volumes/My Shared Files/auto-workspace/scripts/macos-guest/run-ansible.sh"` |
+| 5. Re-test changes | Just re-run step 4 (no VM restart needed) |
+
+**Pro Tip:** The UTM approach is perfect for testing your Ansible changes without affecting your main macOS system, and it closely mimics the VM test harness environment you mentioned in your requirements.
