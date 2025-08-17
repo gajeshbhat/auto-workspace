@@ -27,6 +27,7 @@
       - vim
       - python3
       - rust
+      - pipx
     mas_applications:
       - { id: 775737590, name: "iA Writer" }
       
