@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Test script for Qt installation on macOS
-# This script tests the Qt installation process before integrating with Ansible
+# Qt installation script for Linux
+# This script installs Qt 6.9.1 SDK on Linux systems
 #
 # Usage:
-#   ./test-qt-install.sh                    # Interactive login prompt
-#   QT_EMAIL=user@example.com QT_PASSWORD=pass ./test-qt-install.sh  # Environment variables
-#   ./test-qt-install.sh --email user@example.com --password pass    # Command line args
+#   ./install-qt.sh                    # Interactive login prompt
+#   QT_EMAIL=user@example.com QT_PASSWORD=pass ./install-qt.sh  # Environment variables
+#   ./install-qt.sh --email user@example.com --password pass    # Command line args
 
 log() { echo "[$(date '+%H:%M:%S')] $*"; }
 err() { echo "[$(date '+%H:%M:%S')] ERROR: $*" >&2; }
 warn() { echo "[$(date '+%H:%M:%S')] WARNING: $*" >&2; }
 
 # Configuration
-QT_INSTALLER_URL="https://download.qt.io/official_releases/online_installers/qt-online-installer-mac-x64-online.dmg"
-QT_INSTALLER_DMG="/tmp/qt-online-installer-mac-x64-online.dmg"
+QT_INSTALLER_URL="https://download.qt.io/official_releases/online_installers/qt-online-installer-linux-x64-online.run"
+QT_INSTALLER_FILE="/tmp/qt-online-installer-linux-x64-online.run"
 QT_INSTALL_DIR="$HOME/Qt"
 QT_PACKAGE="qt6.9.1-sdk"
 
@@ -26,13 +26,8 @@ QT_PASSWORD="${QT_PASSWORD:-}"
 # Cleanup function
 cleanup() {
     log "Cleaning up..."
-    # Try to unmount any Qt volumes
-    for vol in $(ls /Volumes/ 2>/dev/null | grep -E "qt.*installer.*macOS" | grep -v " " || true); do
-        log "Unmounting /Volumes/$vol"
-        hdiutil detach "/Volumes/$vol" 2>/dev/null || true
-    done
-    # Remove downloaded DMG
-    rm -f "$QT_INSTALLER_DMG"
+    # Remove downloaded installer
+    rm -f "$QT_INSTALLER_FILE"
 }
 
 # Set trap for cleanup
@@ -100,7 +95,7 @@ get_credentials() {
 
 # Check for existing Qt account cache
 check_qt_cache() {
-    local qt_cache_file="$HOME/Library/Application Support/Qt/qtaccount.ini"
+    local qt_cache_file="$HOME/.local/share/Qt/qtaccount.ini"
     if [[ -f "$qt_cache_file" ]]; then
         log "Found existing Qt account cache at: $qt_cache_file"
         log "You may be able to install without providing credentials"
@@ -111,17 +106,34 @@ check_qt_cache() {
     fi
 }
 
+# Check for required dependencies
+check_dependencies() {
+    local missing_deps=()
+    
+    # Check for required packages
+    for cmd in curl chmod; do
+        if ! command -v "$cmd" >/dev/null 2>&1; then
+            missing_deps+=("$cmd")
+        fi
+    done
+    
+    if [[ ${#missing_deps[@]} -gt 0 ]]; then
+        err "Missing required dependencies: ${missing_deps[*]}"
+        log "Please install them using your package manager:"
+        log "  Ubuntu/Debian: sudo apt-get install curl"
+        log "  RHEL/CentOS/Fedora: sudo yum install curl (or dnf)"
+        exit 1
+    fi
+}
+
 main() {
-    log "Starting Qt installation test..."
+    log "Starting Qt installation for Linux..."
 
     # Parse command line arguments
     parse_args "$@"
 
-    # Check if hdiutil is available
-    if ! command -v hdiutil >/dev/null 2>&1; then
-        err "hdiutil not found. This should be available on macOS by default."
-        exit 1
-    fi
+    # Check dependencies
+    check_dependencies
 
     # Check for existing Qt account cache
     if ! check_qt_cache; then
@@ -130,63 +142,27 @@ main() {
     fi
     
     # Check if Qt is already installed
-    if [[ -d "$QT_INSTALL_DIR" && -f "$QT_INSTALL_DIR/MaintenanceTool.app/Contents/MacOS/MaintenanceTool" ]]; then
+    if [[ -d "$QT_INSTALL_DIR" && -f "$QT_INSTALL_DIR/MaintenanceTool" ]]; then
         log "Qt appears to already be installed at $QT_INSTALL_DIR"
         log "MaintenanceTool found. Skipping installation."
         exit 0
     fi
     
     # Download Qt installer if not present
-    if [[ ! -f "$QT_INSTALLER_DMG" ]]; then
-        log "Downloading Qt Online Installer..."
-        curl -L -o "$QT_INSTALLER_DMG" "$QT_INSTALLER_URL"
-        log "Download completed: $QT_INSTALLER_DMG"
+    if [[ ! -f "$QT_INSTALLER_FILE" ]]; then
+        log "Downloading Qt Online Installer for Linux..."
+        curl -L -o "$QT_INSTALLER_FILE" "$QT_INSTALLER_URL"
+        log "Download completed: $QT_INSTALLER_FILE"
     else
-        log "Using existing installer: $QT_INSTALLER_DMG"
+        log "Using existing installer: $QT_INSTALLER_FILE"
     fi
     
-    # Mount the DMG
-    log "Mounting Qt installer DMG..."
-    hdiutil attach "$QT_INSTALLER_DMG"
-    
-    # Wait a moment for mount to complete
-    sleep 2
-    
-    # Find the mounted volume
-    QT_VOLUME=$(ls /Volumes/ | grep -E "qt.*installer.*macOS" | grep -v " " | head -1 || true)
-    if [[ -z "$QT_VOLUME" ]]; then
-        err "Could not find mounted Qt volume in /Volumes/"
-        ls /Volumes/
-        exit 1
-    fi
-    log "Found Qt volume: $QT_VOLUME"
-    
-    # Find the app bundle
-    QT_APP_PATH="/Volumes/$QT_VOLUME/$QT_VOLUME.app"
-    if [[ ! -d "$QT_APP_PATH" ]]; then
-        err "Could not find Qt app bundle at: $QT_APP_PATH"
-        log "Contents of /Volumes/$QT_VOLUME:"
-        ls -la "/Volumes/$QT_VOLUME/"
-        exit 1
-    fi
-    log "Found Qt app bundle: $QT_APP_PATH"
-    
-    # Find the executable
-    QT_EXECUTABLE="$QT_APP_PATH/Contents/MacOS/$QT_VOLUME"
-    if [[ ! -f "$QT_EXECUTABLE" ]]; then
-        err "Could not find Qt executable at: $QT_EXECUTABLE"
-        log "Contents of $QT_APP_PATH/Contents/MacOS/:"
-        ls -la "$QT_APP_PATH/Contents/MacOS/"
-        exit 1
-    fi
-    log "Found Qt executable: $QT_EXECUTABLE"
-    
-    # Make sure executable has proper permissions
-    chmod +x "$QT_EXECUTABLE"
+    # Make installer executable
+    chmod +x "$QT_INSTALLER_FILE"
     
     # Test the executable
     log "Testing Qt installer executable..."
-    "$QT_EXECUTABLE" --help || true
+    "$QT_INSTALLER_FILE" --help || true
     
     # Create Qt installation directory
     mkdir -p "$QT_INSTALL_DIR"
@@ -197,7 +173,7 @@ main() {
 
     # Build the command with authentication if needed
     local install_cmd=(
-        "$QT_EXECUTABLE"
+        "$QT_INSTALLER_FILE"
         --root "$QT_INSTALL_DIR"
         --accept-licenses
         --accept-obligations
@@ -222,15 +198,24 @@ main() {
     "${install_cmd[@]}"
     
     # Check if installation was successful
-    if [[ -f "$QT_INSTALL_DIR/MaintenanceTool.app/Contents/MacOS/MaintenanceTool" ]]; then
+    if [[ -f "$QT_INSTALL_DIR/MaintenanceTool" ]]; then
         log "Qt installation appears successful!"
-        log "MaintenanceTool found at: $QT_INSTALL_DIR/MaintenanceTool.app"
+        log "MaintenanceTool found at: $QT_INSTALL_DIR/MaintenanceTool"
         
         # Try to find qmake
         QMAKE_PATH=$(find "$QT_INSTALL_DIR" -name "qmake" -type f 2>/dev/null | head -1 || true)
         if [[ -n "$QMAKE_PATH" ]]; then
             log "Found qmake at: $QMAKE_PATH"
             "$QMAKE_PATH" --version || true
+            
+            # Add Qt to PATH in .bashrc if not already present
+            if ! grep -q "Qt.*bin" "$HOME/.bashrc" 2>/dev/null; then
+                log "Adding Qt to PATH in .bashrc"
+                echo "" >> "$HOME/.bashrc"
+                echo "# Qt installation" >> "$HOME/.bashrc"
+                echo "export PATH=\"$(dirname "$QMAKE_PATH"):\$PATH\"" >> "$HOME/.bashrc"
+                log "Qt added to PATH. Please run 'source ~/.bashrc' or restart your terminal."
+            fi
         else
             log "qmake not found, but MaintenanceTool exists"
         fi
@@ -241,7 +226,7 @@ main() {
         exit 1
     fi
     
-    log "Qt installation test completed successfully!"
+    log "Qt installation completed successfully!"
 }
 
 # Run main function with all arguments

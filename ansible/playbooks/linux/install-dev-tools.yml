@@ -94,6 +94,20 @@
     classic: true
   become: true
 
+- name: Check if dotrun is already installed
+  stat:
+    path: /usr/local/bin/dotrun
+  register: dotrun_installed
+  become: false
+
+- name: Install dotrun (Canonical development tool)
+  shell: |
+    curl -sSL https://raw.githubusercontent.com/canonical/dotrun/main/scripts/install.sh | bash
+  environment:
+    HOME: /home/{{ username }}
+  when: not dotrun_installed.stat.exists
+  become: false
+
 # Configure Git global settings
 - name: Configure Git global settings
   shell: |
