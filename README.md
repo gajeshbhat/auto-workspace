@@ -47,16 +47,43 @@ ansible-playbook -i ansible/hosts ansible/linux.yml
 
 #### Linux (Ubuntu 24.04 LTS)
 1. Virtualization: Docker, KVM, LXD, VirtualBox
-2. Development: Git, Vim, Screen, Tmux, Build Tools, Also some of my dotfiles. But these are very lightweight and some basic configurations.
+2. Development: Git, Vim, Screen, Tmux, Build Tools, Rust, Android Tools (ADB/Fastboot), Dotrun, Also some of my dotfiles. But these are very lightweight and some basic configurations.
 3. GUI Apps: VS Code, Spotify, Postman, VLC, LibreOffice, etc.
 4. Cloud Tools: Multipass, Snapcraft, MicroK8s
 5. Productivity: Zoom, Skype, Bitwarden
+6. Qt Framework: Optional manual installation with install-qt.sh script
 
 #### macOS (15.4)
 1. Virtualization: Docker, VirtualBox, Multipass
 2. Development: Git, Vim, Screen, Python3, Rust
 3. GUI Apps: Chrome, VS Code, Spotify, VLC, Transmission, ProtonVPN
 4. Productivity: iA Writer (via Mac App Store)
+
+### Manual Qt Installation (Optional - Linux)
+
+Qt installation requires interactive authentication and is provided as a separate script. After running the main Ansible playbook, you can optionally install Qt:
+
+```bash
+# Run the Qt installation script
+bash ansible/playbooks/linux/install-qt.sh
+
+# Or with command line arguments (to avoid interactive prompts)
+bash ansible/playbooks/linux/install-qt.sh --email your-qt-account@example.com --password your-password
+
+# Or with environment variables
+QT_EMAIL=your-qt-account@example.com QT_PASSWORD=your-password bash ansible/playbooks/linux/install-qt.sh
+```
+
+**What the Qt script installs:**
+- Qt 6.9.1 SDK (includes Qt Creator, CMake, Ninja)
+- Automatically adds Qt to your PATH
+- Privacy-respecting defaults (disables telemetry)
+- Verifies installation with qmake version check
+
+**Requirements for Qt installation:**
+- Qt account (free registration at https://www.qt.io/)
+- Internet connection for downloading (~2GB+ installation)
+- Sufficient disk space (~10GB+ for full SDK)
 
 Notes
  1. Currently only supports Ubuntu 24.04 LTS
@@ -88,9 +115,9 @@ Requirements:
 
 Quick start:
 - Make executable:
-  - chmod +x scripts/test-isolated-playbook.sh
+  - chmod +x scripts/testing/test-linux-playbook.sh
 - Run (auto-deletes VM after run):
-  - ./scripts/test-isolated-playbook.sh
+  - ./scripts/testing/test-linux-playbook.sh
 
 Options:
 - -n name   VM name (default: aw-test-<timestamp>)
@@ -102,9 +129,9 @@ Options:
 
 Examples:
 - Keep VM and enable verbose logs:
-  - ./scripts/test-isolated-playbook.sh -k -v
+  - ./scripts/testing/test-linux-playbook.sh -k -v
 - Custom resources:
-  - ./scripts/test-isolated-playbook.sh -n my-test -c 4 -m 8G -d 30G
+  - ./scripts/testing/test-linux-playbook.sh -n my-test -c 4 -m 8G -d 30G
 
 Isolating what runs:
 - This script always runs ansible/linux.yml. To limit scope, comment out unrelated import_tasks in ansible/linux.yml and keep only the entries you want to validate (e.g., install-dev-tools.yml, install-gui-apps.yml).
@@ -258,7 +285,7 @@ Use the included UTM scripts to test the macOS playbooks in a clean macOS VM on 
 
 1. **Launch UTM setup helper:**
    ```bash
-   ./scripts/utm/quickstart-utm-macos.sh --open
+   ./scripts/vm-setup/utm/quickstart-utm-macos.sh --open
    ```
 
 2. **Download macOS IPSW (if needed):**
@@ -281,7 +308,7 @@ Use the included UTM scripts to test the macOS playbooks in a clean macOS VM on 
 5. **Run Ansible inside the VM:**
    ```bash
    # In the macOS VM Terminal:
-   sudo bash "/Volumes/My Shared Files/auto-workspace/scripts/macos-guest/run-ansible.sh"
+   sudo bash "/Volumes/My Shared Files/auto-workspace/scripts/vm-setup/macos-guest/run-ansible.sh"
    ```
 
 #### Important: Mac App Store Applications
@@ -314,7 +341,7 @@ After making changes to your playbook:
 1. Save changes on your host Mac
 2. Re-run the guest script (no need to restart VM):
    ```bash
-   sudo bash "/Volumes/My Shared Files/auto-workspace/scripts/macos-guest/run-ansible.sh"
+   sudo bash "/Volumes/My Shared Files/auto-workspace/scripts/vm-setup/macos-guest/run-ansible.sh"
    ```
 
 #### UTM Troubleshooting:
@@ -331,10 +358,10 @@ After making changes to your playbook:
 | Step | Command/Action |
 |------|----------------|
 | 0. Download IPSW | Visit https://ipsw.me/ (e.g., https://ipsw.me/Mac16,8) |
-| 1. Setup UTM | `./scripts/utm/quickstart-utm-macos.sh --open` |
+| 1. Setup UTM | `./scripts/vm-setup/utm/quickstart-utm-macos.sh --open` |
 | 2. Create VM | Use UTM GUI with downloaded IPSW + NAT networking + shared directory |
 | 3. Prepare for testing | Comment out `mas_applications` in `ansible/macos.yml` |
-| 4. Run in VM | `sudo bash "/Volumes/My Shared Files/auto-workspace/scripts/macos-guest/run-ansible.sh"` |
+| 4. Run in VM | `sudo bash "/Volumes/My Shared Files/auto-workspace/scripts/vm-setup/macos-guest/run-ansible.sh"` |
 | 5. Re-test changes | Just re-run step 4 (no VM restart needed) |
 
 **Pro Tip:** The UTM approach is perfect for testing your Ansible changes without affecting your main macOS system, and it closely mimics the VM test harness environment you mentioned in your requirements.
