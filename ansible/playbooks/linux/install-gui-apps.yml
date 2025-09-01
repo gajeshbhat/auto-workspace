@@ -28,6 +28,13 @@
     state: present
   become: true
 
+# Install Steam (Snap)
+- name: Install Steam game platform
+  snap:
+    name: steam
+    state: present
+  become: true
+
 # --- Install TightVNC Server ---
 - name: Install TightVNC Server
   apt:
