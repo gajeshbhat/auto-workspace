@@ -50,7 +50,7 @@ ansible-playbook -i ansible/hosts ansible/linux.yml
 2. Development: Git, Vim, Screen, Tmux, Build Tools, Rust, Android Tools (ADB/Fastboot), Dotrun, Also some of my dotfiles. But these are very lightweight and some basic configurations.
 3. GUI Apps: VS Code, Spotify, Postman, VLC, LibreOffice, etc.
 4. Cloud Tools: Multipass, Snapcraft, MicroK8s
-5. Productivity: Zoom, Skype, Bitwarden
+5. Productivity: Zoom, Proton Pass
 6. Qt Framework: Optional manual installation with install-qt.sh script
 
 #### macOS (15.4)

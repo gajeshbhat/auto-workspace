@@ -80,10 +80,10 @@
     state: present
   become: true
 
-# --- Install Bitwarden (Snap) ---
-- name: Install Bitwarden
+# --- Install Proton Pass (Snap) ---
+- name: Install Proton Pass
   snap:
-    name: bitwarden
+    name: proton-pass
     state: present
   become: true
 
