@@ -42,6 +42,13 @@
     state: present
   become: true
 
+# --- Install Brasero Disk Burner ---
+- name: Install Brasero Disk Burner
+  apt:
+    name: brasero
+    state: present
+  become: true
+
 # --- Install Data Science Stack (DSS) ---
 - name: Install Data Science Stack from Canonical
   snap:
