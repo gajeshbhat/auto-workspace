@@ -42,8 +42,8 @@
     state: present
   become: true
 
-# --- Install Brasero Disk Burner ---
-- name: Install Brasero Disk Burner
+# --- Install Brasero disc burner ---
+- name: Install Brasero disc burner
   apt:
     name: brasero
     state: present
