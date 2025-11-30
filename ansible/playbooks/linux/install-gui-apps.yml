@@ -121,10 +121,10 @@
     state: present
   become: true
 
-  # Install transmission (APT)
-- name: Install Transmission
+  # Install Deluge (APT)
+- name: Install Deluge BitTorrent Client
   apt:
-    name: transmission
+    name: deluge
     state: present
   become: true
 
