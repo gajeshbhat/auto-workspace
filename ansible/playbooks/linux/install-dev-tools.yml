@@ -13,6 +13,8 @@
       - tmux
       - ifstat
       - vnstat
+      - nmap
+      - net-tools
     state: present
 
 - name: Check if rustup is already installed
