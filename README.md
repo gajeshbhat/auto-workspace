@@ -2,6 +2,16 @@
 
 Automated workspace setup tool for Ubuntu 24.04 LTS that configures development environments, virtualization tools, and GUI applications using Ansible. Please make sure you have atleast 8GB of RAM and 30GB of free disk space before running the script.
 
+### Quickstart
+
+On a fresh Ubuntu 24.04 or macOS machine:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/gajeshbhat/auto-workspace/master/install.sh | bash
+```
+
+Add `-s -- --check` after `bash` for a dry run. Developing on this repo? See [docs/development.md](docs/development.md).
+
 ### Features
 1. Docker + Docker Compose
 2. KVM/QEMU
@@ -14,34 +24,34 @@ Automated workspace setup tool for Ubuntu 24.04 LTS that configures development 
 
 ### Prerequisites
 
-1. Install Git and Ansible on Ubuntu 24.04 LTS:
+1. Install Git and curl on Ubuntu 24.04 LTS (Ansible itself is installed by the setup script):
 
 ```bash
 sudo apt update
-sudo apt install git ansible -y
+sudo apt install git curl -y
 ```
 
 2. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/Auto-Workspace-GUI.git
-cd Auto-Workspace-GUI
+git clone https://github.com/gajeshbhat/auto-workspace.git
+cd auto-workspace
 ```
-3. Update the `ansible/linux.yml` file with your username, Git global user name, and email:
+
+3. Update the vars in `ansible/linux.yml` (or `ansible/macos.yml`) with your Git identity. `username` is detected from `$USER`:
 
 ```yaml
 vars:
-  username: yourusername
-  git_user_name: "Your Name"
-  git_user_email: "your.email@example.com"
+  git_global_user_name: "Your Name"
+  git_global_user_email: "your.email@example.com"
 ```
 
 4. Run the playbook:
 
 ```bash
-ansible-playbook -i ansible/hosts ansible/linux.yml
-# use --ask-become-pass argument with the above command if you are not running as root
-# Takes ~40 minutes to complete depending on your internet speed and system specifications.
+./scripts/setup-dev.sh
+uv run ansible-playbook -i ansible/hosts ansible/linux.yml -K
+# -K prompts for your sudo password. Takes ~40 minutes depending on your connection and hardware.
 ```
 ### What Gets Installed
 
