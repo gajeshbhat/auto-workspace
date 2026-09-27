@@ -30,7 +30,7 @@ Give the repo a reproducible, pinned lint toolchain; two one-line scripts (dev e
 
 1. On a clean clone, `./scripts/setup-dev.sh` completes and afterwards `uv run pre-commit run -a` runs yamllint, ansible-lint, and shellcheck. Existing code passes under the initial lint configuration.
 2. Re-running `setup-dev.sh` is a no-op apart from confirming state; it never uses `sudo` or changes system packages.
-3. `install.sh --check` on Ubuntu 24.04 (Multipass VM) bootstraps uv, clones the repo, and runs `linux.yml` in check mode. On an unsupported OS it exits non-zero with a clear message.
+3. `install.sh --check` on Ubuntu 24.04 (Multipass VM) bootstraps uv, clones the repo, and starts `linux.yml` in check mode. On an unsupported OS it exits non-zero with a clear message. Today's tasks are not all check-mode-safe; for example, the Zoom `stat` task runs after a download that check mode skips. A playbook failure *inside* check mode is therefore recorded as input for sub-project 3 and does not fail this criterion.
 4. `AGENTS.md` alone is enough for a non-Claude agent to set up, lint, and test the repo and know the safety rules. `CLAUDE.md` imports it and adds only Claude-specific guidance.
 5. The project hooks behave as designed. An edit to a `.yml` file triggers a syntax check, and an edit to a `.sh` file triggers shellcheck. A real `ansible-playbook ansible/linux.yml` Bash call is blocked, while `--syntax-check` and `--check` calls are allowed.
 
