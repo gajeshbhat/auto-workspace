@@ -29,8 +29,8 @@
       - rust
       - pipx
     mas_applications:
-      - { id: 775737590, name: "iA Writer" }
-      
+      - {id: 775737590, name: "iA Writer"}
+
   tasks:
     - import_tasks: playbooks/macos/initial-setup.yml
     - import_tasks: playbooks/macos/install-applications.yml

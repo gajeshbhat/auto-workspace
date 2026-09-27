@@ -43,7 +43,7 @@
 - name: Update APT Cache
   apt:
     update_cache: yes
-  
+
 - name: Install Docker Packages
   apt:
     name:

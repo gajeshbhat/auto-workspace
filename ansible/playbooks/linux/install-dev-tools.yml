@@ -185,5 +185,3 @@
     block: "{{ temp_bashrc_content.content | b64decode }}"
     marker: "# {mark} ANSIBLE MANAGED BLOCK: Custom .bashrc additions"
   become: false
-
-

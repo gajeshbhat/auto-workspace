@@ -27,6 +27,7 @@ QT_PASSWORD="${QT_PASSWORD:-}"
 cleanup() {
     log "Cleaning up..."
     # Try to unmount any Qt volumes
+    # shellcheck disable=SC2010  # volume names are known ASCII; rewritten in sub-project 3
     for vol in $(ls /Volumes/ 2>/dev/null | grep -E "qt.*installer.*macOS" | grep -v " " || true); do
         log "Unmounting /Volumes/$vol"
         hdiutil detach "/Volumes/$vol" 2>/dev/null || true
@@ -128,14 +129,14 @@ main() {
         # Get credentials if no cache exists
         get_credentials
     fi
-    
+
     # Check if Qt is already installed
     if [[ -d "$QT_INSTALL_DIR" && -f "$QT_INSTALL_DIR/MaintenanceTool.app/Contents/MacOS/MaintenanceTool" ]]; then
         log "Qt appears to already be installed at $QT_INSTALL_DIR"
         log "MaintenanceTool found. Skipping installation."
         exit 0
     fi
-    
+
     # Download Qt installer if not present
     if [[ ! -f "$QT_INSTALLER_DMG" ]]; then
         log "Downloading Qt Online Installer..."
@@ -144,15 +145,16 @@ main() {
     else
         log "Using existing installer: $QT_INSTALLER_DMG"
     fi
-    
+
     # Mount the DMG
     log "Mounting Qt installer DMG..."
     hdiutil attach "$QT_INSTALLER_DMG"
-    
+
     # Wait a moment for mount to complete
     sleep 2
-    
+
     # Find the mounted volume
+    # shellcheck disable=SC2010  # volume names are known ASCII; rewritten in sub-project 3
     QT_VOLUME=$(ls /Volumes/ | grep -E "qt.*installer.*macOS" | grep -v " " | head -1 || true)
     if [[ -z "$QT_VOLUME" ]]; then
         err "Could not find mounted Qt volume in /Volumes/"
@@ -160,7 +162,7 @@ main() {
         exit 1
     fi
     log "Found Qt volume: $QT_VOLUME"
-    
+
     # Find the app bundle
     QT_APP_PATH="/Volumes/$QT_VOLUME/$QT_VOLUME.app"
     if [[ ! -d "$QT_APP_PATH" ]]; then
@@ -170,7 +172,7 @@ main() {
         exit 1
     fi
     log "Found Qt app bundle: $QT_APP_PATH"
-    
+
     # Find the executable
     QT_EXECUTABLE="$QT_APP_PATH/Contents/MacOS/$QT_VOLUME"
     if [[ ! -f "$QT_EXECUTABLE" ]]; then
@@ -180,17 +182,17 @@ main() {
         exit 1
     fi
     log "Found Qt executable: $QT_EXECUTABLE"
-    
+
     # Make sure executable has proper permissions
     chmod +x "$QT_EXECUTABLE"
-    
+
     # Test the executable
     log "Testing Qt installer executable..."
     "$QT_EXECUTABLE" --help || true
-    
+
     # Create Qt installation directory
     mkdir -p "$QT_INSTALL_DIR"
-    
+
     # Run the installation
     log "Starting Qt installation with package: $QT_PACKAGE"
     log "Installation directory: $QT_INSTALL_DIR"
@@ -220,12 +222,12 @@ main() {
     log "Command: ${install_cmd[0]} --root ... [credentials hidden] ... install $QT_PACKAGE"
 
     "${install_cmd[@]}"
-    
+
     # Check if installation was successful
     if [[ -f "$QT_INSTALL_DIR/MaintenanceTool.app/Contents/MacOS/MaintenanceTool" ]]; then
         log "Qt installation appears successful!"
         log "MaintenanceTool found at: $QT_INSTALL_DIR/MaintenanceTool.app"
-        
+
         # Try to find qmake
         QMAKE_PATH=$(find "$QT_INSTALL_DIR" -name "qmake" -type f 2>/dev/null | head -1 || true)
         if [[ -n "$QMAKE_PATH" ]]; then
@@ -240,7 +242,7 @@ main() {
         ls -la "$QT_INSTALL_DIR/" || true
         exit 1
     fi
-    
+
     log "Qt installation test completed successfully!"
 }
 

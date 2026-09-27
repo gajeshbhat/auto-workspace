@@ -66,4 +66,3 @@ if [[ "$OPEN_UTM" == "true" ]]; then
 fi
 
 log "Quickstart printed. Open UTM (or re-run with --open) and follow the steps above."
-

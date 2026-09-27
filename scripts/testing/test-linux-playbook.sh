@@ -55,7 +55,7 @@ launch_vm() {
 
 wait_for_vm() {
   log "Waiting for VM to be running and SSH-ready..."
-  for i in {1..60}; do
+  for _ in {1..60}; do
     state=$(multipass info "$NAME" --format json | grep -o '"state": *"[^"]*"' || true)
     if [[ "$state" == *"Running"* ]]; then
       # Also verify we can exec a command
@@ -131,4 +131,3 @@ main() {
 }
 
 main "$@"
-

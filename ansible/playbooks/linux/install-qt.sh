@@ -109,14 +109,14 @@ check_qt_cache() {
 # Check for required dependencies
 check_dependencies() {
     local missing_deps=()
-    
+
     # Check for required packages
     for cmd in curl chmod; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
             missing_deps+=("$cmd")
         fi
     done
-    
+
     if [[ ${#missing_deps[@]} -gt 0 ]]; then
         err "Missing required dependencies: ${missing_deps[*]}"
         log "Please install them using your package manager:"
@@ -140,14 +140,14 @@ main() {
         # Get credentials if no cache exists
         get_credentials
     fi
-    
+
     # Check if Qt is already installed
     if [[ -d "$QT_INSTALL_DIR" && -f "$QT_INSTALL_DIR/MaintenanceTool" ]]; then
         log "Qt appears to already be installed at $QT_INSTALL_DIR"
         log "MaintenanceTool found. Skipping installation."
         exit 0
     fi
-    
+
     # Download Qt installer if not present
     if [[ ! -f "$QT_INSTALLER_FILE" ]]; then
         log "Downloading Qt Online Installer for Linux..."
@@ -156,17 +156,17 @@ main() {
     else
         log "Using existing installer: $QT_INSTALLER_FILE"
     fi
-    
+
     # Make installer executable
     chmod +x "$QT_INSTALLER_FILE"
-    
+
     # Test the executable
     log "Testing Qt installer executable..."
     "$QT_INSTALLER_FILE" --help || true
-    
+
     # Create Qt installation directory
     mkdir -p "$QT_INSTALL_DIR"
-    
+
     # Run the installation
     log "Starting Qt installation with package: $QT_PACKAGE"
     log "Installation directory: $QT_INSTALL_DIR"
@@ -196,18 +196,18 @@ main() {
     log "Command: ${install_cmd[0]} --root ... [credentials hidden] ... install $QT_PACKAGE"
 
     "${install_cmd[@]}"
-    
+
     # Check if installation was successful
     if [[ -f "$QT_INSTALL_DIR/MaintenanceTool" ]]; then
         log "Qt installation appears successful!"
         log "MaintenanceTool found at: $QT_INSTALL_DIR/MaintenanceTool"
-        
+
         # Try to find qmake
         QMAKE_PATH=$(find "$QT_INSTALL_DIR" -name "qmake" -type f 2>/dev/null | head -1 || true)
         if [[ -n "$QMAKE_PATH" ]]; then
             log "Found qmake at: $QMAKE_PATH"
             "$QMAKE_PATH" --version || true
-            
+
             # Add Qt to PATH in .bashrc if not already present
             if ! grep -q "Qt.*bin" "$HOME/.bashrc" 2>/dev/null; then
                 log "Adding Qt to PATH in .bashrc"
@@ -225,7 +225,7 @@ main() {
         ls -la "$QT_INSTALL_DIR/" || true
         exit 1
     fi
-    
+
     log "Qt installation completed successfully!"
 }
 
