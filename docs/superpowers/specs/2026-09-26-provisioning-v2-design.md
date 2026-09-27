@@ -22,8 +22,8 @@ Rewrite the playbooks as one clean, role-based, data-driven Ansible project that
 
 ```
 install.sh                      # bootstrap → ansible/site.yml (macOS: also installs Homebrew)
+ansible.cfg                     # repo root (commands run from root): inventory, stdout callback
 ansible/
-  ansible.cfg                   # inventory, roles_path, stdout callback
   site.yml                      # assert supported OS → group_by OS → roles
   inventory/hosts.yml           # localhost, local connection
   group_vars/
@@ -50,7 +50,12 @@ Removed: `ansible/linux.yml`, `ansible/macos.yml`, `ansible/hosts`, `ansible/pla
 - **Supported-platform assert** is the first task. It accepts:
   - `ansible_distribution == "Ubuntu"` with version `24.04` or `26.04`
   - `ansible_os_family == "Darwin"` with major version `15` or `26`
-- **Vendor repos derive everything from facts.** They use `ansible_distribution_release` (noble or resolute) and the dpkg architecture, never hard-coded values. Keys are dearmored into `/etc/apt/keyrings/<name>.gpg` and referenced with `signed-by`, and repos are added with `ansible.builtin.deb822_repository`. A repo entry can restrict architectures; Chrome is amd64-only.
+- **`site.yml` has three plays:**
+  1. `localhost`: assert the platform, then `group_by`
+  2. `hosts: ubuntu`
+  3. `hosts: macos`
+  Roles pick their OS tasks with `import_tasks: debian.yml` or `darwin.yml` plus `when`, which keeps them static, syntax-checkable and lintable.
+- **Vendor repos derive everything from facts.** They use `ansible_distribution_release` (noble or resolute) and the dpkg architecture, never hard-coded values. Repos are added with `ansible.builtin.deb822_repository`, whose `signed_by` takes the vendor's key URL; the module stores the key under `/etc/apt/keyrings/` and handles armored and binary keys. A repo entry can restrict architectures; Chrome, Zoom and VirtualBox are amd64-only. Chrome (`/etc/default/google-chrome`) and VS Code (debconf) are stopped from adding duplicate repo files of their own.
 - **Privilege:** the play runs with `become: false`. System tasks set `become: true`, and user files never pass through root.
 - **Module names:** FQCN everywhere.
 - **Services** restart through handlers.
@@ -75,6 +80,7 @@ Removed: `ansible/linux.yml`, `ansible/macos.yml`, `ansible/hosts`, `ansible/pla
 | vendor apt repo | VS Code `code` |
 | vendor apt repo | Google Chrome (amd64 only) |
 | vendor apt repo | Proton VPN `proton-vpn-gnome-desktop` |
+| vendor apt repo | GitHub CLI `gh` (`cli.github.com/packages`) |
 | `.deb` URL (only when the package is absent) | Zoom |
 | apt (virtualization role) | qemu-system-x86 (or qemu-system-arm on arm64), qemu-utils, libvirt-daemon-system, libvirt-clients, virtinst, virt-manager, bridge-utils |
 | snap | lxd, multipass (classic), powershell (classic), spotify, proton-pass |
@@ -105,7 +111,7 @@ Removed: `ansible/linux.yml`, `ansible/macos.yml`, `ansible/hosts`, `ansible/pla
 | Method | Items |
 |---|---|
 | install.sh | Homebrew (official installer, `NONINTERACTIVE=1`) |
-| brew formulae | git, screen, htop, vim, python@3.13, mas |
+| brew formulae | git, gh, screen, htop, vim, python@3.13, mas, go, uv, chezmoi |
 | brew casks | google-chrome, spotify, visual-studio-code, vlc, protonvpn, virtualbox, multipass, docker-desktop, utm, localsend |
 | mas | iA Writer (775737590) |
 
@@ -113,7 +119,7 @@ Removed: `ansible/linux.yml`, `ansible/macos.yml`, `ansible/hosts`, `ansible/pla
 
 | Tool | Ubuntu | macOS |
 |---|---|---|
-| Rust | rustup official installer (`creates: ~/.cargo/bin/rustup`) | brew `rustup` + `rustup default stable` |
+| Rust | rustup official installer (`creates: ~/.cargo/bin/rustup`) | same (brew's `rustup` isn't linked onto PATH by default, so the official installer is used on both) |
 | Go | official tarball → `/usr/local/go`, version `go_version` (1.27.1), replaced only on version change | brew `go` |
 | uv | official installer → `~/.local/bin` | brew `uv` |
 | Flutter | fvm (official install script, `fvm_version` 4.3.1), then `fvm install stable` + `fvm global stable`; apt deps clang, cmake, ninja-build, pkg-config, libgtk-3-dev | fvm via brew tap `leoafarias/fvm`, then the same fvm steps |
@@ -149,6 +155,7 @@ dot_local/bin/executable_dotfiles-backup   # chezmoi re-add && chezmoi git add/c
   run_onchange_after_20-claude-plugins.sh.tmpl    # hash of enabledPlugins → `claude plugin install <id>` each; skips if claude missing
 ```
 
+- **`dot_bashrc`** is Ubuntu's `/etc/skel/.bashrc`, followed by the repo's current 7-line `.bashrc` additions, followed by a PATH block: `~/.local/bin`, `~/.cargo/env`, `/usr/local/go/bin`, `~/go/bin`, `~/fvm/bin`, `~/fvm/default/bin`. `dot_zshrc` gets the same PATH block, plus Homebrew's `shellenv`.
 - **The portable subset of `settings.json`** covers `permissions`, `enabledPlugins`, `extraKnownMarketplaces` (if any), `skillOverrides`, `hooks`, `theme`, `editorMode`, `timeFormat`, `worktree`, `enableWorkflows` and `feedbackDrafts`. Nothing machine-specific or secret goes in it.
 - **Never tracked:**
   - `~/.claude/.credentials.json`
@@ -158,8 +165,9 @@ dot_local/bin/executable_dotfiles-backup   # chezmoi re-add && chezmoi git add/c
   - `file-history/`, `backups/`, `state/`, `daemon*`, `stats-cache.json`
 - **Ansible `dotfiles` role:**
   - The first run is `chezmoi init --apply --promptString name=… --promptString email=… {{ dotfiles_repo }}`.
-  - Later runs use `chezmoi update --apply`.
-  - `changed` comes from `chezmoi status` before and after.
+  - Later runs pull the repo, then read `chezmoi status`:
+    - If any file was edited locally since the last apply, the role **does not apply**. It prints a warning to run `dotfiles-backup` (or `chezmoi apply --force`), so local edits are never overwritten.
+    - Otherwise it applies the pending changes.
 - **Order:** the `claude_code` role runs before `dotfiles`, so the plugin script finds `claude`.
 - **Before the playbook's first run replaces an existing `~/.bashrc`,** the role backs it up to `~/.bashrc.pre-chezmoi` once.
 
