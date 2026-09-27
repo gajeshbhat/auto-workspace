@@ -115,4 +115,16 @@ expect_task "Initialize LXD"
 expect_task "Read VirtualBox version"
 expect_task "Install the matching VirtualBox Extension Pack"
 
+# languages
+expect_task "Install Flutter desktop build dependencies"
+expect_task "Read installed Go version"
+expect_task "Install Go"
+expect_task "Install uv"
+expect_task "Tap fvm"
+expect_task "Install Rust (stable) with rustup"
+expect_task "Install fvm"
+expect_task "Install Flutter with fvm"
+expect_task "Set global Flutter version"
+expect_task "Install dotrun"
+
 finish

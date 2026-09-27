@@ -1,0 +1,53 @@
+---
+- name: Install Flutter desktop build dependencies
+  become: true
+  ansible.builtin.apt:
+    name: [clang, cmake, ninja-build, pkg-config, libgtk-3-dev]
+    state: present
+
+- name: Read installed Go version
+  ansible.builtin.command: /usr/local/go/bin/go env GOVERSION
+  register: languages_go_installed
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Install Go
+  when: languages_go_installed.stdout != 'go' ~ go_version
+  block:
+    - name: Remove previous Go installation
+      become: true
+      ansible.builtin.file:
+        path: /usr/local/go
+        state: absent
+
+    - name: Install Go {{ go_version }}
+      become: true
+      ansible.builtin.unarchive:
+        src: "https://go.dev/dl/go{{ go_version }}.linux-{{ dpkg_arch }}.tar.gz"
+        dest: /usr/local
+        remote_src: true
+
+- name: Download uv installer
+  ansible.builtin.get_url:
+    url: https://astral.sh/uv/install.sh
+    dest: "{{ installer_cache }}/uv-install.sh"
+    mode: "0755"
+
+- name: Install uv
+  ansible.builtin.command: sh {{ installer_cache }}/uv-install.sh
+  environment:
+    UV_NO_MODIFY_PATH: "1"
+  args:
+    creates: "{{ local_bin }}/uv"
+
+- name: Download fvm installer
+  ansible.builtin.get_url:
+    url: https://fvm.app/install.sh
+    dest: "{{ installer_cache }}/fvm-install.sh"
+    mode: "0755"
+
+- name: Install fvm
+  ansible.builtin.command: bash {{ installer_cache }}/fvm-install.sh {{ fvm_version }}
+  args:
+    creates: "{{ workstation_home }}/fvm/bin/fvm"

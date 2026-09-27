@@ -38,6 +38,8 @@
       tags: [docker]
     - role: virtualization
       tags: [virtualization]
+    - role: languages
+      tags: [languages]
 
 - name: Provision macOS workstation
   hosts: macos
@@ -49,3 +51,5 @@
       tags: [base]
     - role: packages
       tags: [packages]
+    - role: languages
+      tags: [languages]
