@@ -1,0 +1,43 @@
+---
+- name: Install apt packages
+  become: true
+  ansible.builtin.apt:
+    name: "{{ apt_packages }}"
+    state: present
+
+- name: Install snaps
+  become: true
+  community.general.snap:
+    name: "{{ item.name }}"
+    classic: "{{ item.classic | default(false) }}"
+    state: present
+  loop: "{{ snap_packages }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Install Flatpaks
+  become: true
+  community.general.flatpak:
+    name: "{{ flatpak_packages }}"
+    remote: flathub
+    method: system
+    state: present
+
+- name: Check which .deb packages are installed
+  ansible.builtin.command: dpkg-query -W -f=${Status} {{ item.name }}
+  loop: "{{ packages_debs }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: packages_deb_status
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Install .deb packages from vendor URLs
+  become: true
+  ansible.builtin.apt:
+    deb: "{{ item.item.url }}"
+  loop: "{{ packages_deb_status.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when: "'install ok installed' not in item.stdout"

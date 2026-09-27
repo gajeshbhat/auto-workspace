@@ -75,3 +75,23 @@ vendor_repos:
     key: https://cli.github.com/packages/githubcli-archive-keyring.gpg
     architectures: [amd64, arm64]
     packages: [gh]
+
+apt_packages: [brasero, deluge, libreoffice, simple-scan, vlc]
+
+snap_packages:
+  - name: lxd
+  - name: multipass
+  - name: powershell
+    classic: true
+  - name: proton-pass
+  - name: spotify
+
+flatpak_packages:  # Flathub, verified publishers only
+  - com.play0ad.zeroad
+  - org.gnome.Snapshot
+  - org.localsend.localsend_app
+
+deb_packages:  # vendor .deb downloads without an apt repo
+  - name: zoom
+    url: https://zoom.us/client/latest/zoom_amd64.deb
+    architectures: [amd64]

@@ -1,0 +1,16 @@
+---
+- name: Install Homebrew formulae
+  community.general.homebrew:
+    name: "{{ brew_formulae }}"
+    state: present
+
+- name: Install Homebrew casks
+  community.general.homebrew_cask:
+    name: "{{ brew_casks }}"
+    state: present
+    accept_external_apps: true
+
+- name: Install Mac App Store apps
+  community.general.mas:
+    id: "{{ mas_apps | map(attribute='id') | list }}"
+    state: present

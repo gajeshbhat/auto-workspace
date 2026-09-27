@@ -32,6 +32,8 @@
       tags: [base]
     - role: vendor_repos
       tags: [repos]
+    - role: packages
+      tags: [packages]
 
 - name: Provision macOS workstation
   hosts: macos
@@ -41,3 +43,5 @@
   roles:
     - role: base
       tags: [base]
+    - role: packages
+      tags: [packages]

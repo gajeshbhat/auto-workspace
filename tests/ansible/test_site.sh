@@ -83,4 +83,25 @@ expect_task "Reassert vendor apt repositories that package installs may overwrit
 site="$(cat ansible/site.yml)"
 assert_contains "$site" "changed_when: false" "Group host by OS is marked changed_when: false"
 
+# packages
+expect_task "Install apt packages"
+expect_task "Install snaps"
+expect_task "Install Flatpaks"
+expect_task "Check which .deb packages are installed"
+expect_task "Install .deb packages from vendor URLs"
+expect_task "Install Homebrew formulae"
+expect_task "Install Homebrew casks"
+expect_task "Install Mac App Store apps"
+data="$(cat ansible/group_vars/ubuntu.yml ansible/group_vars/macos.yml)"
+for p in brasero deluge libreoffice simple-scan vlc lxd multipass powershell proton-pass spotify \
+  com.play0ad.zeroad org.gnome.Snapshot org.localsend.localsend_app zoom \
+  docker-desktop google-chrome localsend protonvpn utm visual-studio-code 775737590 gh chezmoi uv go; do
+  assert_contains "$data" "$p" "package data lists $p"
+done
+for gone in postman steam telegram mullvad tightvnc microk8s juju maas charmcraft snapcraft transmission pipx astral-uv; do
+  # vendor_repos' legacy-source cleanup list names old apt source files (e.g. mullvad.list) it
+  # removes; that's not installing the app, so it's excluded from this "no longer installed" check.
+  assert_eq "" "$(grep -rn "$gone" ansible/ | grep -v 'mullvad\.list' || true)" "dropped: $gone"
+done
+
 finish

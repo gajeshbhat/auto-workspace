@@ -1,0 +1,2 @@
+---
+packages_debs: "{{ deb_packages | default([]) | selectattr('architectures', 'contains', dpkg_arch) | list }}"
