@@ -27,3 +27,9 @@ repos:
         entry: uv run --locked shellcheck --severity=warning
         language: system
         types: [shell]
+      - id: shell-tests
+        name: shell tests
+        entry: tests/run.sh
+        language: system
+        files: ^(install\.sh|scripts/|tests/|\.claude/)
+        pass_filenames: false
