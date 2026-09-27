@@ -1,0 +1,90 @@
+---
+- name: Find legacy apt sources from the previous playbooks
+  ansible.builtin.find:
+    paths: /etc/apt/sources.list.d
+    patterns: "{{ vendor_repos_legacy_sources }}"
+  register: vendor_repos_legacy
+
+- name: Remove legacy apt sources
+  become: true
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ vendor_repos_legacy.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+  notify: Update apt cache
+
+- name: List foreign dpkg architectures
+  ansible.builtin.command: dpkg --print-foreign-architectures
+  register: vendor_repos_foreign
+  changed_when: false
+  check_mode: false
+
+- name: Enable foreign architectures needed by vendor repos
+  become: true
+  ansible.builtin.command: dpkg --add-architecture {{ item }}
+  loop: "{{ vendor_repos_foreign_archs }}"
+  when: item not in vendor_repos_foreign.stdout_lines
+  changed_when: true
+  notify: Update apt cache
+
+- name: Stop Chrome from adding its own apt source
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/default/google-chrome
+    content: |
+      repo_add_once="false"
+      repo_reenable_on_distupgrade="false"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Stop VS Code from adding its own apt source
+  become: true
+  ansible.builtin.debconf:
+    name: code
+    question: code/add-microsoft-repo
+    value: "false"
+    vtype: boolean
+
+- name: Add vendor apt repositories
+  become: true
+  ansible.builtin.deb822_repository:
+    name: "{{ item.name }}"
+    uris: "{{ item.uri }}"
+    suites: "{{ item.suite }}"
+    components: "{{ item.component }}"
+    architectures: "{{ [dpkg_arch] + item.foreign_architectures | default([]) }}"
+    signed_by: "{{ item.key }}"
+  loop: "{{ vendor_repos_enabled }}"
+  loop_control:
+    label: "{{ item.name }}"
+  notify: Update apt cache
+
+- name: Apply pending apt cache update
+  ansible.builtin.meta: flush_handlers
+
+- name: Install vendor packages
+  become: true
+  ansible.builtin.apt:
+    name: "{{ vendor_repos_enabled | map(attribute='packages') | flatten }}"
+    state: present
+
+# Some vendor packages (google-chrome-stable's postinst is the known offender) unconditionally
+# rewrite their own apt source file on install if one already exists, clobbering the entry we
+# just wrote. Reasserting it here converges the system to our declared vendor_repos within this
+# same run instead of only on the next one.
+- name: Reassert vendor apt repositories that package installs may overwrite
+  become: true
+  ansible.builtin.deb822_repository:
+    name: "{{ item.name }}"
+    uris: "{{ item.uri }}"
+    suites: "{{ item.suite }}"
+    components: "{{ item.component }}"
+    architectures: "{{ [dpkg_arch] + item.foreign_architectures | default([]) }}"
+    signed_by: "{{ item.key }}"
+  loop: "{{ vendor_repos_enabled }}"
+  loop_control:
+    label: "{{ item.name }}"
+  notify: Update apt cache

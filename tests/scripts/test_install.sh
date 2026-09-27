@@ -54,7 +54,7 @@ assert_eq "true dev /x/y" "$parsed" "flags parsed"
 REMOTE="$TMP/auto-workspace.git"
 git init -q --bare -b master "$REMOTE"
 git clone -q "$REMOTE" "$TMP/seed" 2>/dev/null
-git -C "$TMP/seed" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+git -C "$TMP/seed" -c user.email=t@t -c user.name=t -c commit.gpgsign=false commit -q --allow-empty -m init
 git -C "$TMP/seed" -c push.gpgSign=false push -q origin master
 
 sync() { # sync DIR

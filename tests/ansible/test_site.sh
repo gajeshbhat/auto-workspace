@@ -54,4 +54,33 @@ expect_task "Add Flathub remote"
 expect_task "Check Homebrew is installed"
 expect_task "Require Homebrew"
 
+# vendor_repos
+expect_task "Find legacy apt sources from the previous playbooks"
+expect_task "Remove legacy apt sources"
+expect_task "Enable foreign architectures needed by vendor repos"
+expect_task "Stop Chrome from adding its own apt source"
+expect_task "Stop VS Code from adding its own apt source"
+expect_task "Add vendor apt repositories"
+expect_task "Install vendor packages"
+repos="$(cat ansible/group_vars/ubuntu.yml)"
+for r in docker virtualbox winehq vscode google-chrome protonvpn github-cli; do
+  assert_contains "$repos" "- name: $r" "vendor repo defined: $r"
+done
+amd64_only="$(.venv/bin/python - <<'EOF'
+import yaml
+d = yaml.safe_load(open("ansible/group_vars/ubuntu.yml"))
+print(",".join(sorted(r["name"] for r in d["vendor_repos"] if r["architectures"] == ["amd64"])))
+EOF
+)"
+assert_eq "google-chrome,virtualbox,winehq" "$amd64_only" "amd64-only vendor repos"
+
+# Structural fixes found by the first VM smoke (Task 4 step 5):
+# google-chrome-stable's postinst unconditionally rewrites its own .sources file if one already
+# exists, clobbering our deb822 entry on first install; reasserting after install converges it.
+expect_task "Reassert vendor apt repositories that package installs may overwrite"
+# group_by always reports changed (fresh in-memory inventory every run); it changes nothing on
+# disk, so it must not count against the "second run is a no-op" idempotency check.
+site="$(cat ansible/site.yml)"
+assert_contains "$site" "changed_when: false" "Group host by OS is marked changed_when: false"
+
 finish
