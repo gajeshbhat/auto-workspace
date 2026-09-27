@@ -26,11 +26,15 @@
   gather_facts: false
   environment:
     PATH: "{{ user_path }}"
-  roles: []
+  roles:
+    - role: base
+      tags: [base]
 
 - name: Provision macOS workstation
   hosts: macos
   gather_facts: false
   environment:
     PATH: "{{ user_path }}"
-  roles: []
+  roles:
+    - role: base
+      tags: [base]

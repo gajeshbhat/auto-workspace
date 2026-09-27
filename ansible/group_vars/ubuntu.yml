@@ -1,1 +1,23 @@
 ---
+dpkg_arch: "{{ {'x86_64': 'amd64', 'aarch64': 'arm64'}[ansible_facts['architecture']] }}"
+ubuntu_release: "{{ ansible_facts['distribution_release'] }}"
+
+base_packages:
+  - build-essential
+  - curl
+  - dkms
+  - flatpak
+  - git
+  - htop
+  - ifstat
+  - "linux-headers-{{ ansible_facts['kernel'] }}"
+  - net-tools
+  - nmap
+  - python3-debian
+  - screen
+  - snapd
+  - tmux
+  - unzip
+  - vim
+  - vnstat
+  - wget

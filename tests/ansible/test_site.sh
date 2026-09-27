@@ -47,4 +47,11 @@ assert_eq "false" "$(test -e ansible/linux.yml -o -e ansible/playbooks && echo t
 
 # --- role expectations are appended below by later tasks ---
 
+# base
+expect_task "Upgrade installed packages"
+expect_task "Install base packages"
+expect_task "Add Flathub remote"
+expect_task "Check Homebrew is installed"
+expect_task "Require Homebrew"
+
 finish
