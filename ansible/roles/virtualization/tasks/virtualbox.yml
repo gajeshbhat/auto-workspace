@@ -1,0 +1,47 @@
+---
+- name: Read VirtualBox version
+  ansible.builtin.command: VBoxManage --version
+  register: virtualization_vbox_version_raw
+  changed_when: false
+  check_mode: false
+
+- name: List installed extension packs
+  ansible.builtin.command: VBoxManage list extpacks
+  register: virtualization_vbox_extpacks
+  changed_when: false
+  check_mode: false
+
+- name: Fetch and install the VirtualBox Extension Pack if outdated
+  vars:
+    virtualization_vbox_version: "{{ virtualization_vbox_version_raw.stdout | regex_replace('r\\d+$', '') }}"
+  when: virtualization_vbox_version not in virtualization_vbox_extpacks.stdout
+  block:
+    - name: Create installer cache directory
+      ansible.builtin.file:
+        path: "{{ installer_cache }}"
+        state: directory
+        mode: "0755"
+
+    - name: Download Extension Pack {{ virtualization_vbox_version }}
+      ansible.builtin.get_url:
+        url: "https://download.virtualbox.org/virtualbox/{{ virtualization_vbox_version }}/Oracle_VirtualBox_Extension_Pack-{{ virtualization_vbox_version }}.vbox-extpack"
+        dest: "{{ virtualization_extpack_path }}"
+        mode: "0644"
+        force: true
+
+    - name: Compute Extension Pack license hash
+      ansible.builtin.shell: >-
+        set -o pipefail &&
+        tar -xzOf {{ virtualization_extpack_path | quote }} --wildcards '*ExtPack-license.txt' | sha256sum | cut -d' ' -f1
+      args:
+        executable: /bin/bash
+      register: virtualization_extpack_license
+      changed_when: false
+
+    - name: Install the matching VirtualBox Extension Pack
+      become: true
+      ansible.builtin.command: >-
+        VBoxManage extpack install --replace
+        --accept-license={{ virtualization_extpack_license.stdout }}
+        {{ virtualization_extpack_path | quote }}
+      changed_when: true

@@ -104,4 +104,15 @@ for gone in postman steam telegram mullvad tightvnc microk8s juju maas charmcraf
   assert_eq "" "$(grep -rn "$gone" ansible/ | grep -v 'mullvad\.list' || true)" "dropped: $gone"
 done
 
+# docker + virtualization
+expect_task "Enable and start Docker"
+expect_task "Add user to the docker group"
+expect_task "Install KVM and libvirt"
+expect_task "Enable and start libvirtd"
+expect_task "Add user to virtualization groups"
+expect_task "Check for LXD storage pools"
+expect_task "Initialize LXD"
+expect_task "Read VirtualBox version"
+expect_task "Install the matching VirtualBox Extension Pack"
+
 finish
