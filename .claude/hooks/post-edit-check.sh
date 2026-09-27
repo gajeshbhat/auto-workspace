@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Claude Code PostToolUse(Edit|Write|MultiEdit) hook: fast lint feedback.
-#   *.yml/*.yaml -> yamllint the file; files under ansible/ also syntax-check
-#                   their playbook (macos.yml for macOS files, else linux.yml)
+#   *.yml/*.yaml -> yamllint the file; files under ansible/ also syntax-check ansible/site.yml
 #   *.sh         -> shellcheck --severity=warning
 # Exit 2 feeds the failure output back to Claude. Fails open (exit 0) when the
 # toolchain isn't installed yet.
@@ -34,10 +33,8 @@ case "$rel" in
   *.yml | *.yaml)
     run .venv/bin/yamllint "$rel"
     case "$rel" in
-      ansible/macos.yml | ansible/playbooks/macos/*)
-        run .venv/bin/ansible-playbook -i ansible/hosts ansible/macos.yml --syntax-check ;;
       ansible/*)
-        run .venv/bin/ansible-playbook -i ansible/hosts ansible/linux.yml --syntax-check ;;
+        run .venv/bin/ansible-playbook ansible/site.yml --syntax-check ;;
     esac
     ;;
   *.sh)

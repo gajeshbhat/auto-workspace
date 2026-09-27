@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# auto-workspace machine bootstrap (Ubuntu 24.04 or macOS):
+# auto-workspace machine bootstrap:
 #   curl -fsSL https://raw.githubusercontent.com/gajeshbhat/auto-workspace/master/install.sh | bash
 #   curl -fsSL .../install.sh | bash -s -- --check --branch <branch> --dir <dir>
 # Installs git + uv, clones/updates the repo, syncs the pinned toolchain and
 # runs the matching playbook. Everything runs from main() on the last line, so a
 # partially downloaded script never executes.
+# Supports Ubuntu 24.04/26.04 and macOS 15/26.
 set -euo pipefail
 
 REPO_URL="${AW_REPO_URL:-https://github.com/gajeshbhat/auto-workspace.git}"
@@ -41,11 +42,11 @@ parse_args() {
   done
 }
 
-# Prints the playbook for this OS (linux.yml | macos.yml) or fails.
-detect_playbook() {
+# Prints the platform (ubuntu | macos) or fails. Versions are enforced by the playbook's assert.
+detect_platform() {
   local kernel="${AW_UNAME:-$(uname -s)}" id="" version=""
   if [[ "$kernel" == "Darwin" ]]; then
-    echo "macos.yml"
+    echo "macos"
     return 0
   fi
   if [[ "$kernel" == "Linux" && -r "$OS_RELEASE_FILE" ]]; then
@@ -53,27 +54,38 @@ detect_playbook() {
     id="$(. "$OS_RELEASE_FILE" && echo "${ID:-}")"
     # shellcheck source=/dev/null
     version="$(. "$OS_RELEASE_FILE" && echo "${VERSION_ID:-}")"
-    if [[ "$id" == "ubuntu" && "$version" == "24.04" ]]; then
-      echo "linux.yml"
+    if [[ "$id" == "ubuntu" && ("$version" == "24.04" || "$version" == "26.04") ]]; then
+      echo "ubuntu"
       return 0
     fi
   fi
-  err "Unsupported OS ($kernel ${id:-} ${version:-}). auto-workspace supports Ubuntu 24.04 and macOS only."
+  err "Unsupported OS ($kernel ${id:-} ${version:-}). auto-workspace supports Ubuntu 24.04/26.04 and macOS 15/26."
   return 1
 }
 
 ensure_prereqs() {
-  local playbook="$1"
-  if [[ "$playbook" == "linux.yml" ]]; then
+  local platform="$1"
+  if [[ "$platform" == "ubuntu" ]]; then
     if ! command -v git >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1; then
       log "Installing git and curl (sudo)..."
       sudo apt-get update -y
       sudo apt-get install -y git curl
     fi
-  elif ! xcode-select -p >/dev/null 2>&1; then
+    return
+  fi
+  if ! xcode-select -p >/dev/null 2>&1; then
     log "Installing Xcode Command Line Tools - accept the macOS dialog..."
     xcode-select --install || true
     until xcode-select -p >/dev/null 2>&1; do sleep 10; done
+  fi
+  if ! command -v brew >/dev/null 2>&1 && [[ ! -x /opt/homebrew/bin/brew && ! -x /usr/local/bin/brew ]]; then
+    log "Installing Homebrew..."
+    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  fi
+  if [[ -x /opt/homebrew/bin/brew ]]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+  elif [[ -x /usr/local/bin/brew ]]; then
+    eval "$(/usr/local/bin/brew shellenv)"
   fi
 }
 
@@ -116,12 +128,12 @@ ansible_become_flags() {
 }
 
 run_playbook() {
-  local playbook="$1" become
+  local become
   cd "$DIR"
   log "Syncing pinned toolchain..."
   uv sync --locked --group dev
   uv run --locked ansible-galaxy collection install -r requirements.yml
-  local args=(-i ansible/hosts "ansible/$playbook")
+  local args=(ansible/site.yml)
   become="$(ansible_become_flags)"
   if [[ -n "$become" ]]; then args+=("$become"); fi
   if [[ "$CHECK" == "true" ]]; then args+=(--check); fi
@@ -131,13 +143,13 @@ run_playbook() {
 
 main() {
   parse_args "$@"
-  local playbook
-  playbook="$(detect_playbook)"
-  log "Target: $playbook (branch $BRANCH, dir $DIR, check=$CHECK)"
-  ensure_prereqs "$playbook"
+  local platform
+  platform="$(detect_platform)"
+  log "Target: $platform (branch $BRANCH, dir $DIR, check=$CHECK)"
+  ensure_prereqs "$platform"
   ensure_uv
   sync_repo
-  run_playbook "$playbook"
+  run_playbook
   log "Done. Log out and back in to apply group changes; a reboot may be required."
 }
 

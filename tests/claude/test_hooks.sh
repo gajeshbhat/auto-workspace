@@ -66,13 +66,13 @@ if [[ -x "$ROOT/.venv/bin/ansible-playbook" ]]; then
   # A scratch project: a copy of ansible/ + lint config, sharing the real .venv.
   P="$TMP/proj"
   mkdir -p "$P"
-  cp -R "$ROOT/ansible" "$ROOT/.yamllint" "$P/"
+  cp -R "$ROOT/ansible" "$ROOT/.yamllint" "$ROOT/ansible.cfg" "$P/"
   ln -s "$ROOT/.venv" "$P/.venv"
 
-  assert_eq 0 "$(post "$P" "$P/ansible/playbooks/linux/cleanup.yml" | status_code)" "valid task file passes"
+  assert_eq 0 "$(post "$P" "$P/ansible/site.yml" | status_code)" "valid task file passes"
 
-  printf -- '---\n- name: broken\n  apt:\n   name: x\n  bad_indent: [\n' >"$P/ansible/playbooks/linux/cleanup.yml"
-  r="$(post "$P" "$P/ansible/playbooks/linux/cleanup.yml")"
+  printf -- '---\n- name: broken\n  apt:\n   name: x\n  bad_indent: [\n' >"$P/ansible/site.yml"
+  r="$(post "$P" "$P/ansible/site.yml")"
   assert_eq 2 "${r%%|*}" "broken task file reported"
   assert_contains "$r" "syntax-check" "broken task file runs syntax-check"
 

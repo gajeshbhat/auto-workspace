@@ -16,17 +16,19 @@ run_status() {
   printf '%s|%s' "$rc" "$out"
 }
 
-# --- detect_playbook ---------------------------------------------------------
+# --- detect_platform ---------------------------------------------------------
 printf 'ID=ubuntu\nVERSION_ID="24.04"\n' >"$TMP/noble"
+printf 'ID=ubuntu\nVERSION_ID="26.04"\n' >"$TMP/resolute"
 printf 'ID=ubuntu\nVERSION_ID="22.04"\n' >"$TMP/jammy"
 printf 'ID=debian\nVERSION_ID="12"\n' >"$TMP/debian"
 
 detect() { # detect UNAME OS_RELEASE_FILE
-  AW_UNAME="$1" AW_OS_RELEASE="$2" AW_SOURCED=1 bash -c 'source "$1"; detect_playbook' _ "$INSTALL"
+  AW_UNAME="$1" AW_OS_RELEASE="$2" AW_SOURCED=1 bash -c 'source "$1"; detect_platform' _ "$INSTALL"
 }
 
-assert_eq "0|linux.yml" "$(run_status detect Linux "$TMP/noble")" "ubuntu 24.04 -> linux.yml"
-assert_eq "0|macos.yml" "$(run_status detect Darwin "$TMP/noble")" "Darwin -> macos.yml"
+assert_eq "0|ubuntu" "$(run_status detect Linux "$TMP/noble")" "ubuntu 24.04 -> ubuntu"
+assert_eq "0|ubuntu" "$(run_status detect Linux "$TMP/resolute")" "ubuntu 26.04 -> ubuntu"
+assert_eq "0|macos" "$(run_status detect Darwin "$TMP/noble")" "Darwin -> macos"
 r="$(run_status detect Linux "$TMP/jammy")"
 assert_eq "1" "${r%%|*}" "ubuntu 22.04 rejected"
 assert_contains "$r" "Unsupported OS" "ubuntu 22.04 message"
@@ -81,5 +83,9 @@ git -C "$TMP/clone" add keep.txt
 echo changed >"$TMP/clone/keep.txt"
 r="$(run_status sync "$TMP/clone")"
 assert_eq "changed" "$(cat "$TMP/clone/keep.txt")" "dirty clone: local edit preserved"
+
+# --- playbook invocation ----------------------------------------------------
+assert_contains "$(cat "$INSTALL")" "ansible/site.yml" "install.sh runs ansible/site.yml"
+assert_eq "" "$(grep -E 'linux\.yml|macos\.yml' "$INSTALL" || true)" "install.sh no longer references linux/macos.yml"
 
 finish

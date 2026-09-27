@@ -1,10 +1,7 @@
 ---
-profile: min  # raised to production in sub-project 3
+profile: production
 offline: true  # collections come from requirements.yml via setup-dev.sh
 exclude_paths:
   - .venv/
   - .claude/
   - docs/
-kinds:
-  - tasks: "**/ansible/playbooks/**/*.yml"
-  - playbook: "**/ansible/*.yml"

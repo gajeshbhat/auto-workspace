@@ -3,10 +3,10 @@ extends: default
 
 rules:
   line-length:
-    max: 160
+    max: 200
     level: warning
   truthy:
-    allowed-values: ['true', 'false', 'yes', 'no']  # tightened in sub-project 3
+    allowed-values: ['true', 'false']
     check-keys: false
   comments:
     min-spaces-from-content: 1
@@ -14,6 +14,11 @@ rules:
   indentation:
     spaces: 2
     indent-sequences: consistent
+  braces:
+    max-spaces-inside: 1
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: true
 
 ignore: |
   .venv/

@@ -13,9 +13,9 @@ err() { echo "[!] $*" >&2; }
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd)"
 SHARE_ROOT="$(cd "$SCRIPT_PATH/../../" && pwd)"  # This should resolve to the repo root inside the share
 
-# Sanity check: does ansible/macos.yml exist?
-if [[ ! -f "$SHARE_ROOT/ansible/macos.yml" ]]; then
-  err "Could not find ansible/macos.yml under $SHARE_ROOT. Are you running from the auto-mounted share?"
+# Sanity check: does ansible/site.yml exist?
+if [[ ! -f "$SHARE_ROOT/ansible/site.yml" ]]; then
+  err "Could not find ansible/site.yml under $SHARE_ROOT. Are you running from the auto-mounted share?"
   exit 1
 fi
 
@@ -51,7 +51,7 @@ install_ansible() {
 
 run_playbook() {
   log "Running Ansible macOS playbook (skip virtualization tags in VM)"
-  ANSIBLE_STDOUT_CALLBACK=yaml ansible-playbook "$SHARE_ROOT/ansible/macos.yml" --skip-tags virtualization,docker,virtualbox,multipass -K -vv || true
+  ANSIBLE_STDOUT_CALLBACK=yaml ansible-playbook "$SHARE_ROOT/ansible/site.yml" --skip-tags virtualization -K -vv || true
 }
 
 main() {
