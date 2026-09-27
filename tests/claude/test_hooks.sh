@@ -39,7 +39,7 @@ assert_eq 0 "$(block 'shellcheck install.sh')" "shellcheck install.sh allowed"
 assert_eq 0 "$(block 'ansible-playbook other.yml')" "unrelated playbook allowed"
 assert_eq 0 "$(block 'ls -la')" "unrelated command allowed"
 msg="$(json_cmd 'ansible-playbook ansible/linux.yml' | bash "$BLOCK" 2>&1 || true)"
-assert_contains "$msg" "test-linux-playbook.sh" "block message suggests VM runner"
+assert_contains "$msg" "test-in-vm.sh" "block message suggests VM runner"
 
 # --- post-edit-check ---------------------------------------------------------
 # post PROJECT_DIR FILE -> "<rc>|<stderr>"

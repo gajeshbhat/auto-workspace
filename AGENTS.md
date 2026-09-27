@@ -20,7 +20,7 @@ ansible/
   playbooks/*/install-qt.sh   # optional, interactive Qt installer
 install.sh                    # one-line machine bootstrap (curl | bash)
 scripts/setup-dev.sh          # one-line dev environment setup
-scripts/testing/              # Multipass VM runner for linux.yml
+scripts/test-in-vm.sh         # Multipass VM runner for site.yml
 scripts/vm-setup/             # UTM helpers for testing macos.yml in a VM
 tests/                        # shell tests (tests/run.sh)
 docs/development.md           # human development guide
@@ -36,7 +36,7 @@ uv run pre-commit run -a      # all linters: yamllint, ansible-lint, shellcheck,
 tests/run.sh                  # shell tests for install.sh and the Claude hooks
 uv run ansible-playbook -i ansible/hosts ansible/linux.yml --syntax-check
 uv run ansible-playbook -i ansible/hosts ansible/macos.yml --syntax-check
-scripts/testing/test-linux-playbook.sh -k -v   # real run inside a Multipass VM
+scripts/test-in-vm.sh --release 24.04   # real run + idempotency in a Multipass VM
 ```
 
 Tool versions are pinned in `pyproject.toml`/`uv.lock` and collections in `requirements.yml`. Change them deliberately, never float them.

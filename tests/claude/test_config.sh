@@ -43,7 +43,7 @@ done
 
 assert_eq "@AGENTS.md" "$(head -1 "$ROOT/CLAUDE.md" 2>/dev/null)" "CLAUDE.md imports AGENTS.md"
 agents="$(cat "$ROOT/AGENTS.md" 2>/dev/null || true)"
-for needle in "./scripts/setup-dev.sh" "uv run pre-commit run -a" "tests/run.sh" "test-linux-playbook.sh" "Never run"; do
+for needle in "./scripts/setup-dev.sh" "uv run pre-commit run -a" "tests/run.sh" "scripts/test-in-vm.sh" "Never run"; do
   assert_contains "$agents" "$needle" "AGENTS.md mentions $needle"
 done
 

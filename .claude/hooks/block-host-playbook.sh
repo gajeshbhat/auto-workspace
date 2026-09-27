@@ -24,7 +24,7 @@ developer's own machine (dist-upgrade, system config, packages as root).
 Use instead:
   uv run ansible-playbook -i ansible/hosts ansible/linux.yml --syntax-check
   uv run ansible-playbook -i ansible/hosts ansible/linux.yml --check
-  scripts/testing/test-linux-playbook.sh -k -v   # real run inside a Multipass VM
+  scripts/test-in-vm.sh --release 24.04   # real run inside a Multipass VM
 EOF
   exit 2
 fi
