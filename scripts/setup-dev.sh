@@ -39,8 +39,8 @@ main() {
 [+] Dev environment ready. Next steps:
     uv run pre-commit run -a        # lint everything
     tests/run.sh                    # shell tests
-    uv run ansible-playbook -i ansible/hosts ansible/linux.yml --syntax-check
-    scripts/testing/test-linux-playbook.sh -k -v   # full run in a Multipass VM
+    uv run ansible-playbook ansible/site.yml --syntax-check
+    scripts/test-in-vm.sh --release 26.04   # full run in a Multipass VM
 EOF
 }
 

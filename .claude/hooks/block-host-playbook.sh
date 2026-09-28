@@ -22,9 +22,9 @@ if [[ "$cmd" == *ansible-playbook* && "$cmd" =~ $playbook ]] || [[ "$cmd" =~ $in
 Blocked by .claude/hooks/block-host-playbook.sh: this would provision the
 developer's own machine (dist-upgrade, system config, packages as root).
 Use instead:
-  uv run ansible-playbook -i ansible/hosts ansible/linux.yml --syntax-check
-  uv run ansible-playbook -i ansible/hosts ansible/linux.yml --check
-  scripts/test-in-vm.sh --release 24.04   # real run inside a Multipass VM
+  uv run ansible-playbook ansible/site.yml --syntax-check
+  uv run ansible-playbook ansible/site.yml --check --tags always
+  scripts/test-in-vm.sh --release 26.04   # real run inside a Multipass VM
 EOF
   exit 2
 fi

@@ -10,12 +10,13 @@ Check every changed task against this list:
 
 1. **Idempotency.** A second run must report `ok`, not `changed`. `shell`/`command` tasks need `creates:`, `removes:`, or `changed_when:`. Downloads use `get_url`. Repo files are written once.
 2. **Privilege and user.** Plays run with `become: yes`. Anything touching the user's home must use `/home/{{ username }}` (or `ansible_env.HOME` with `become: false`), never `~`, and files must be owned by `{{ username }}`.
-3. **Apt repositories.** Keys live in `/etc/apt/keyrings/<name>.gpg` (dearmored) and are referenced with `signed-by=`. No `apt-key`, no piping keys through `sudo tee` inside `shell`. Prefer `ansible.builtin.deb822_repository`, or `apt_repository` with `filename:`.
+3. **Vendor repos.** An entry in `vendor_repos` using `deb822_repository` with `signed_by: <key URL>`, with `architectures`; no `apt-key`, no hand-written `.list` files.
 4. **Architecture.** Flag hard-coded `amd64`/`x86_64`. Use `{{ ansible_architecture }}` or the dpkg arch, or guard the task with `when:`.
 5. **Error masking.** `ignore_errors: yes` needs a reason. Prefer `failed_when:` with an explicit condition.
 6. **Check mode.** Tasks that depend on earlier downloads or commands should survive `--check` (use `check_mode: false` for read-only probes, or `when: not ansible_check_mode`).
-7. **Parity and docs.** A new Linux app should have a macOS equivalent in `ansible/macos.yml` (`brew_casks`/`brew_formulae`/`mas_applications`) or a stated reason why not, and should be listed in `README.md`.
+7. **Parity and docs.** A new Ubuntu app should have a macOS equivalent in `group_vars/macos.yml` (`brew_casks`/`brew_formulae`/`mas_apps`) or a stated reason why not, and should be listed in `README.md`.
 8. **Secrets.** No credentials, tokens or personal emails in YAML. Qt credentials come from the environment only.
+9. **Variable naming.** Registered/set variables inside a role are prefixed with the role name.
 
 Output one finding per line, most severe first:
 
