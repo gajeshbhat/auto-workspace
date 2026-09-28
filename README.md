@@ -8,8 +8,8 @@ Ansible that sets up my workstation: **Ubuntu 24.04 / 26.04 LTS** and **macOS 15
 curl -fsSL https://raw.githubusercontent.com/gajeshbhat/auto-workspace/master/install.sh | bash
 ```
 
-Dry run: `… | bash -s -- --check`. Re-run any time; it only changes what's missing.
-Run one part: `uv run ansible-playbook ansible/site.yml --tags languages` (tags: base, repos, packages, docker, virtualization, languages, claude, dotfiles).
+Dry run: `… | bash -s -- --check`. Safe to re-run: it installs what's missing and upgrades system packages.
+Run one part: `cd ~/auto-workspace && uv run ansible-playbook ansible/site.yml -K --tags languages` (`-K` asks for the sudo password; tags: base, repos, packages, docker, virtualization, languages, claude, dotfiles).
 
 ## What you get
 
@@ -27,5 +27,7 @@ Edit the lists in `ansible/group_vars/`: `ubuntu.yml` (apt, vendor repos, snaps,
 - Log out and back in after the first run (new groups: docker, libvirt, kvm, lxd, vboxusers).
 - Secure Boot: VirtualBox kernel modules need a one-time MOK enrollment prompt on reboot.
 - macOS: sign in to the App Store first (for iA Writer).
+- Machines set up by the old playbooks keep the VS Code snap and the 0 A.D. deb next to the new apt/Flatpak installs; remove them with `sudo snap remove code` and `sudo apt remove 0ad`.
+- Existing dotfiles are saved as `<file>.pre-chezmoi` before the first apply; your old `~/.gitconfig` becomes `~/.gitconfig.local`, which still applies.
 
 Developing on this repo: [docs/development.md](docs/development.md).

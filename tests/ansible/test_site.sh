@@ -136,7 +136,6 @@ expect_task "Install dotrun"
 expect_task "Install Claude Code"
 expect_task "Install chezmoi"
 expect_task "Check for an existing chezmoi source"
-expect_task "Back up the shell rc file before chezmoi takes it over"
 expect_task "Initialize dotfiles with chezmoi"
 expect_task "Pull dotfiles updates"
 expect_task "Read chezmoi status"
@@ -146,5 +145,87 @@ l_claude="$(printf '%s\n' "$TASKS" | grep -n 'Install Claude Code' | head -1 | c
 l_init="$(printf '%s\n' "$TASKS" | grep -n 'Initialize dotfiles with chezmoi' | head -1 | cut -d: -f1)"
 assert_eq "true" "$([[ ${l_claude:-0} -gt 0 && ${l_claude:-0} -lt ${l_init:-0} ]] && echo true || echo false)" \
   "Claude Code install precedes chezmoi init"
+
+# --- final review fixes --------------------------------------------------------
+# ev EXPR [ARGS...] -> EXPR rendered by ansible (lists/dicts as compact JSON). ARGS are extra
+# ansible args, typically -e @vars.yml / -e '<json>' supplying fake registered results.
+ev() {
+  local ex="$1"
+  shift
+  .venv/bin/ansible localhost -o -m ansible.builtin.debug -a "msg='{{ $ex }}'" "$@" 2>/dev/null \
+    | sed -n 's/^localhost | SUCCESS => //p' \
+    | .venv/bin/python -c 'import json,sys; m=json.load(sys.stdin)["msg"]; print(m if isinstance(m, str) else json.dumps(m, separators=(",", ":")))'
+}
+
+# Legacy apt sources written by the old playbooks: apt_repository named WineHQ's
+# winehq-<codename>.list (Signed-By conflicts with winehq.sources) and ppa:wfg/0ad ppa_wfg_0ad_<codename>.list.
+legacy="$(.venv/bin/python - <<'EOF'
+import fnmatch, yaml
+pats = yaml.safe_load(open("ansible/roles/vendor_repos/vars/main.yml"))["vendor_repos_legacy_sources"]
+old = ["winehq-noble.list", "winehq-noble.sources", "ppa_wfg_0ad_noble.list", "wfg-ubuntu-0ad-noble.sources",
+       "docker.list", "virtualbox.list", "protonvpn-stable.list", "mullvad.list", "google-chrome.list",
+       "vscode.list", "github-cli.list"]
+ours = ["docker.sources", "virtualbox.sources", "winehq.sources", "vscode.sources", "google-chrome.sources",
+        "protonvpn.sources", "github-cli.sources"]
+miss = [f for f in old if not any(fnmatch.fnmatch(f, p) for p in pats)]
+hit = [f for f in ours if any(fnmatch.fnmatch(f, p) for p in pats)]
+print("missed=%s removed_ours=%s" % (",".join(miss), ",".join(hit)))
+EOF
+)"
+assert_eq "missed= removed_ours=" "$legacy" "legacy apt source patterns cover old files, spare ours"
+
+# VBoxManage --version may print a vboxdrv warning banner (Secure Boot, pending reboot) first.
+vbox_vars=(-e @ansible/roles/virtualization/vars/main.yml)
+banner='{"virtualization_vbox_version_raw": {"stdout": "WARNING: The vboxdrv kernel module is not loaded. Either there is no module\n         available for the current kernel (6.8.0-45-generic) or it failed to\n         load. Please recompile the kernel module and install it by\n\n           sudo /sbin/vboxconfig\n\n         You will not be able to start VMs until this problem is fixed.\n7.2.4r170995"}}'
+assert_eq "7.2.4" "$(ev virtualization_vbox_version "${vbox_vars[@]}" -e "$banner")" "VirtualBox version parsed past a warning banner"
+assert_eq "7.2.4" "$(ev virtualization_vbox_version "${vbox_vars[@]}" -e '{"virtualization_vbox_version_raw": {"stdout": "7.2.4r170995"}}')" \
+  "VirtualBox version parsed from plain output"
+
+# Snaps: spotify and proton-pass are published for amd64 only (snap store channel-map, 2026-09-28).
+snap_args=(-e @ansible/group_vars/ubuntu.yml -e @ansible/roles/packages/vars/main.yml)
+assert_eq '["lxd","multipass","powershell"]' \
+  "$(ev "packages_snaps | map(attribute='name') | list" "${snap_args[@]}" -e '{"dpkg_arch": "arm64"}')" "arm64 skips amd64-only snaps"
+assert_eq '["lxd","multipass","powershell","proton-pass","spotify"]' \
+  "$(ev "packages_snaps | map(attribute='name') | list" "${snap_args[@]}" -e '{"dpkg_arch": "amd64"}')" "amd64 installs every snap"
+assert_contains "$(cat ansible/roles/packages/tasks/debian.yml)" 'loop: "{{ packages_snaps }}"' "snap install loops over the arch-filtered list"
+
+# Dotfiles: never clobber an existing machine's files or git identity.
+expect_task "Read the existing git user name"
+expect_task "Read the existing git user email"
+expect_task "Keep machine-specific git settings in ~/.gitconfig.local"
+expect_task "Read chezmoi state"
+expect_task "Back up existing files before chezmoi takes them over"
+df_tasks="$(cat ansible/roles/dotfiles/tasks/main.yml)"
+assert_eq "" "$(grep -nE -- '- --(apply|force)$' ansible/roles/dotfiles/tasks/main.yml || true)" "chezmoi init neither applies nor forces"
+assert_contains "$df_tasks" "Git email={{ dotfiles_git_email }}" "chezmoi is given the resolved git email"
+df_args=(-e @ansible/group_vars/all.yml -e @ansible/roles/dotfiles/vars/main.yml)
+assert_eq "real@example.org" "$(ev dotfiles_git_email "${df_args[@]}" -e '{"dotfiles_git_email_current": {"config_value": "real@example.org"}}')" \
+  "existing git email is kept"
+assert_eq "myemail@example.com" "$(ev dotfiles_git_email "${df_args[@]}" -e '{"dotfiles_git_email_current": {"config_value": ""}}')" \
+  "git email falls back to group_vars when unset"
+assert_eq "Gajesh Bhat" "$(ev dotfiles_git_name "${df_args[@]}" -e '{"dotfiles_git_name_current": {"config_value": ""}}')" \
+  "git name falls back to group_vars when unset"
+assert_eq "Gajesh Bhat" "$(ev dotfiles_git_name "${df_args[@]}" -e '{"dotfiles_git_name_current": {"skipped": true}}')" \
+  "git name falls back when the probe was skipped"
+# chezmoi status: ' M' = exists, differs, chezmoi never wrote it (no entryState) -> back up before apply.
+# 'MM' = edited after chezmoi wrote it (left alone; apply is skipped), ' A' = absent, ' R' = script.
+df_state='{"workstation_home": "/h", "dotfiles_status": {"stdout_lines": [" M .vimrc", " M .screenrc", "MM .bashrc", " A .gitconfig", " R install.sh", " M .claude/settings.json"]}, "dotfiles_state": {"stdout": "{\"entryState\": {\"/h/.screenrc\": {}, \"/h/.bashrc\": {}}}"}}'
+assert_eq '[".vimrc",".claude/settings.json"]' "$(ev dotfiles_backup_files "${df_args[@]}" -e "$df_state")" \
+  "back up existing files chezmoi never wrote"
+
+# macOS: casks that sudo need the become password; base runs brew update.
+assert_contains "$(cat ansible/roles/packages/tasks/darwin.yml)" 'sudo_password: "{{ ansible_become_password | default(omit) }}"' \
+  "homebrew_cask gets the become password"
+expect_task "Update Homebrew"
+assert_contains "$(cat ansible/roles/base/tasks/darwin.yml)" "update_homebrew: true" "base updates Homebrew"
+guest="$(cat scripts/vm-setup/macos-guest/run-ansible.sh)"
+assert_eq "" "$(grep -nE 'ANSIBLE_STDOUT_CALLBACK|ansible-playbook.*\|\| true' scripts/vm-setup/macos-guest/run-ansible.sh || true)" \
+  "macOS guest runner: no removed yaml callback, failures propagate"
+assert_contains "$guest" 'cd "$SHARE_ROOT"' "macOS guest runner runs from the repo root"
+
+# README accuracy.
+readme="$(cat README.md)"
+assert_contains "$readme" "cd ~/auto-workspace && uv run ansible-playbook ansible/site.yml -K --tags languages" "README tag example is runnable"
+assert_eq "" "$(grep -n "only changes what's missing" README.md || true)" "README does not claim re-runs change nothing"
 
 finish

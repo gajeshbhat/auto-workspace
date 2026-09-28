@@ -3,7 +3,8 @@ set -euo pipefail
 
 # Run Ansible playbook from the auto-mounted UTM share on a macOS guest.
 # Usage (inside guest Terminal):
-#   sudo bash "/Volumes/My Shared Files/<Your Share Name>/scripts/macos-guest/run-ansible.sh"
+#   bash "/Volumes/My Shared Files/<Your Share Name>/scripts/vm-setup/macos-guest/run-ansible.sh"
+# Not with sudo: Homebrew refuses to run as root; the playbook asks for the sudo password (-K).
 
 log() { echo "[+] $*"; }
 err() { echo "[!] $*" >&2; }
@@ -11,7 +12,7 @@ err() { echo "[!] $*" >&2; }
 # Discover the auto-mounted UTM share path that contains this script.
 # This allows you to invoke the script regardless of the share folder name.
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd)"
-SHARE_ROOT="$(cd "$SCRIPT_PATH/../../" && pwd)"  # This should resolve to the repo root inside the share
+SHARE_ROOT="$(cd "$SCRIPT_PATH/../../.." && pwd)"  # scripts/vm-setup/macos-guest -> repo root
 
 # Sanity check: does ansible/site.yml exist?
 if [[ ! -f "$SHARE_ROOT/ansible/site.yml" ]]; then
@@ -25,7 +26,7 @@ install_xcode_clt() {
   touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
   PROD=$(softwareupdate -l 2>/dev/null | awk -F'*' '/Command Line Tools/ {print $2}' | sed 's/^ *//' | tail -n1 || true)
   if [[ -n "$PROD" ]]; then
-    softwareupdate -i "$PROD" --agree-to-license || true
+    sudo softwareupdate -i "$PROD" --agree-to-license || true
   fi
   rm -f /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress || true
 }
@@ -36,10 +37,10 @@ install_homebrew() {
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   if [[ -d /opt/homebrew/bin ]]; then
     eval "$('/opt/homebrew/bin/brew' shellenv)"
-    echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> /etc/zprofile
+    echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> "$HOME/.zprofile"
   elif [[ -d /usr/local/bin ]]; then
     eval "$('/usr/local/bin/brew' shellenv)"
-    echo 'eval "$(/usr/local/bin/brew shellenv)"' >> /etc/zprofile
+    echo 'eval "$(/usr/local/bin/brew shellenv)"' >> "$HOME/.zprofile"
   fi
 }
 
@@ -51,7 +52,9 @@ install_ansible() {
 
 run_playbook() {
   log "Running Ansible macOS playbook (skip virtualization tags in VM)"
-  ANSIBLE_STDOUT_CALLBACK=yaml ansible-playbook "$SHARE_ROOT/ansible/site.yml" --skip-tags virtualization -K -vv || true
+  # From the repo root so ansible.cfg (inventory, roles path) applies; failures propagate.
+  cd "$SHARE_ROOT"
+  ansible-playbook ansible/site.yml --skip-tags virtualization -K -vv
 }
 
 main() {

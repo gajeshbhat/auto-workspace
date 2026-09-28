@@ -49,7 +49,7 @@ Tool versions are pinned in `pyproject.toml`/`uv.lock` and collections in `requi
 
 ## Safety rules
 
-1. **Never run `ansible/site.yml` or `install.sh` for real on the machine you are working on.** They dist-upgrade the OS, rewrite system config and install dozens of packages as root. Use `--syntax-check`, `--check`, or `scripts/test-in-vm.sh` (Multipass VM). Claude Code enforces this with `.claude/hooks/block-host-playbook.sh`.
+1. **Never run `ansible/site.yml` or `install.sh` for real on the machine you are working on.** They dist-upgrade the OS, rewrite system config and install dozens of packages as root. Use `ansible-playbook … --syntax-check` / `--check` (not `install.sh`, even with `--check`: it still installs packages first), or `scripts/test-in-vm.sh` (Multipass VM). Claude Code enforces this with `.claude/hooks/block-host-playbook.sh`.
 2. The plays run with task-level `become`, so root-owned paths and user paths differ. For user files use `/home/{{ username }}` and set `owner`/`group`, or `become: false`.
 3. Never commit secrets or personal credentials. `install-qt.sh` reads Qt credentials from flags or environment variables only.
 4. Work on feature branches. Never push to or rewrite `master`.

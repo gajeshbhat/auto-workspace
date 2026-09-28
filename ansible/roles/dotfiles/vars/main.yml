@@ -1,6 +1,17 @@
 ---
 dotfiles_source_dir: "{{ workstation_home }}/.local/share/chezmoi"
-dotfiles_shell_rc: "{{ '.zshrc' if ansible_facts['os_family'] == 'Darwin' else '.bashrc' }}"
+# Keep the machine's existing git identity; group_vars only fill in what is unset.
+dotfiles_git_name: "{{ (dotfiles_git_name_current.config_value | default('') | trim) or git_user_name }}"
+dotfiles_git_email: "{{ (dotfiles_git_email_current.config_value | default('') | trim) or git_user_email }}"
 # chezmoi status: column 1 != ' ' means the file changed locally since chezmoi last wrote it.
 dotfiles_local_edits: "{{ dotfiles_status.stdout_lines | default([]) | select('match', '^[^ ]') | list }}"
 dotfiles_pending: "{{ dotfiles_status.stdout_lines | default([]) | length > 0 }}"
+# Paths chezmoi has written before (its entryState), relative to the home directory.
+dotfiles_written: >-
+  {{ (dotfiles_state.stdout | default('{}') | from_json).entryState | default({})
+     | list | map('regex_replace', '^' ~ (workstation_home ~ '/') | regex_escape, '') | list }}
+# Existing files that differ from the target (column 2 'M') but that chezmoi never wrote: apply
+# would silently replace them, so they are copied to <file>.pre-chezmoi first.
+dotfiles_backup_files: >-
+  {{ dotfiles_status.stdout_lines | default([]) | select('match', '^.M ')
+     | map('regex_replace', '^.. ', '') | reject('in', dotfiles_written) | list }}

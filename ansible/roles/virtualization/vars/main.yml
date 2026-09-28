@@ -2,3 +2,6 @@
 virtualization_qemu_package: "{{ 'qemu-system-arm' if dpkg_arch == 'arm64' else 'qemu-system-x86' }}"
 virtualization_groups: "{{ ['libvirt', 'kvm', 'lxd'] + (['vboxusers'] if dpkg_arch == 'amd64' else []) }}"
 virtualization_extpack_path: "{{ installer_cache }}/Oracle_VirtualBox_Extension_Pack.vbox-extpack"
+# `VBoxManage --version` prints "7.2.4r170995", possibly after a vboxdrv warning banner (Secure
+# Boot or a pending reboot), so take the first line that starts with a version number.
+virtualization_vbox_version: "{{ virtualization_vbox_version_raw.stdout | regex_search('^[0-9]+\\.[0-9]+\\.[0-9]+', multiline=True) }}"

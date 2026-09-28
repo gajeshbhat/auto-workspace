@@ -21,7 +21,7 @@ Add one line to the matching list in `ansible/group_vars/ubuntu.yml` or `macos.y
 
 ## Dotfiles
 
-Managed by chezmoi from `gajeshbhat/dotfiles`. `dotfiles-backup` pushes local edits (including `~/.claude/settings.json`). The playbook never overwrites locally edited dotfiles; it warns instead.
+Managed by chezmoi from `gajeshbhat/dotfiles`. `dotfiles-backup` pushes local edits (including `~/.claude/settings.json`). The playbook never overwrites locally edited dotfiles; it warns instead. Files it would replace for the first time are saved as `<file>.pre-chezmoi`, and an existing `~/.gitconfig` moves to `~/.gitconfig.local` (still included).
 
 ## Tool versions
 

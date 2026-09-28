@@ -23,50 +23,76 @@
     path: "{{ dotfiles_source_dir }}/.git"
   register: dotfiles_source
 
-- name: Check for an existing shell rc file
-  ansible.builtin.stat:
-    path: "{{ workstation_home }}/{{ dotfiles_shell_rc }}"
-  register: dotfiles_rc
+# First run on a machine: take over without losing its git identity or settings.
+- name: Read the existing git user name
+  community.general.git_config_info:
+    name: user.name
+    scope: global
+  register: dotfiles_git_name_current
+  when: not dotfiles_source.stat.exists
 
-- name: Back up the shell rc file before chezmoi takes it over
-  ansible.builtin.copy:
-    src: "{{ workstation_home }}/{{ dotfiles_shell_rc }}"
-    dest: "{{ workstation_home }}/{{ dotfiles_shell_rc }}.pre-chezmoi"
-    remote_src: true
-    force: false
-    mode: "0644"
-  when: not dotfiles_source.stat.exists and dotfiles_rc.stat.exists
+- name: Read the existing git user email
+  community.general.git_config_info:
+    name: user.email
+    scope: global
+  register: dotfiles_git_email_current
+  when: not dotfiles_source.stat.exists
+
+# The dotfiles' ~/.gitconfig ends with `[include] path = ~/.gitconfig.local`, so the machine's own
+# settings (signingkey, gpgsign, credential helpers, ...) keep applying on top of the template.
+- name: Keep machine-specific git settings in ~/.gitconfig.local
+  ansible.builtin.command: mv {{ workstation_home }}/.gitconfig {{ workstation_home }}/.gitconfig.local
+  args:
+    creates: "{{ workstation_home }}/.gitconfig.local"
+    removes: "{{ workstation_home }}/.gitconfig"
+  when: not dotfiles_source.stat.exists
 
 - name: Initialize dotfiles with chezmoi
   ansible.builtin.command:
     argv:
       - chezmoi
       - init
-      - --apply
-      - --force
       - --branch
       - "{{ dotfiles_branch }}"
       - --promptString
-      - "Git name={{ git_user_name }}"
+      - "Git name={{ dotfiles_git_name }}"
       - --promptString
-      - "Git email={{ git_user_email }}"
+      - "Git email={{ dotfiles_git_email }}"
       - "{{ dotfiles_repo }}"
+  register: dotfiles_init
   when: not dotfiles_source.stat.exists
   changed_when: true
 
-- name: Update existing dotfiles
+- name: Pull dotfiles updates
+  ansible.builtin.command: chezmoi git -- pull --ff-only
+  register: dotfiles_pull
   when: dotfiles_source.stat.exists
-  block:
-    - name: Pull dotfiles updates
-      ansible.builtin.command: chezmoi git -- pull --ff-only
-      register: dotfiles_pull
-      changed_when: "'Already up to date' not in dotfiles_pull.stdout"
+  changed_when: "'Already up to date' not in dotfiles_pull.stdout"
 
+- name: Apply dotfiles safely
+  when: dotfiles_source.stat.exists or dotfiles_init is changed
+  block:
     - name: Read chezmoi status
       ansible.builtin.command: chezmoi status
       register: dotfiles_status
       changed_when: false
       check_mode: false
+
+    - name: Read chezmoi state
+      ansible.builtin.command: chezmoi state dump --format json
+      register: dotfiles_state
+      changed_when: false
+      check_mode: false
+
+    # Includes the first run: every existing ~/.bashrc, ~/.vimrc, ~/.claude/settings.json, ...
+    - name: Back up existing files before chezmoi takes them over
+      ansible.builtin.copy:
+        src: "{{ workstation_home }}/{{ item }}"
+        dest: "{{ workstation_home }}/{{ item }}.pre-chezmoi"
+        remote_src: true
+        force: false
+        mode: preserve
+      loop: "{{ dotfiles_backup_files }}"
 
     - name: Warn about local dotfile edits
       ansible.builtin.debug:

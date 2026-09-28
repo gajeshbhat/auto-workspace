@@ -7,9 +7,11 @@ vendor_repos_legacy_sources:
   - docker.list
   - virtualbox.list
   - winehq-*.sources
+  - winehq-*.list  # old apt_repository filename winehq-<codename>, Signed-By winehq-archive.key
   - protonvpn-stable.list
   - mullvad.list
   - google-chrome.list
   - vscode.list
   - github-cli.list
   - wfg-ubuntu-0ad-*
+  - ppa_wfg_0ad_*.list  # old apt_repository ppa:wfg/0ad

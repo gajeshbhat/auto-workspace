@@ -9,6 +9,8 @@
     name: "{{ brew_casks }}"
     state: present
     accept_external_apps: true
+    # Casks like virtualbox and docker-desktop run sudo inside brew; there is no tty under ansible.
+    sudo_password: "{{ ansible_become_password | default(omit) }}"
 
 - name: Install Mac App Store apps
   community.general.mas:

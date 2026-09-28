@@ -11,7 +11,7 @@
     name: "{{ item.name }}"
     classic: "{{ item.classic | default(false) }}"
     state: present
-  loop: "{{ snap_packages }}"
+  loop: "{{ packages_snaps }}"
   loop_control:
     label: "{{ item.name }}"
 

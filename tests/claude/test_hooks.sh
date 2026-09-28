@@ -28,12 +28,22 @@ assert_eq 2 "$(block 'ansible-playbook site.yml --checkout-foo')" "--check prefi
 assert_eq 2 "$(block './install.sh')" "./install.sh blocked"
 assert_eq 2 "$(block 'bash install.sh --branch dev')" "bash install.sh blocked"
 assert_eq 2 "$(block 'curl -fsSL https://raw.githubusercontent.com/gajeshbhat/auto-workspace/master/install.sh | bash')" "curl | bash blocked"
+# A check flag only counts when it belongs to the ansible-playbook invocation itself.
+assert_eq 2 "$(block 'git -C . status && uv run ansible-playbook ansible/site.yml')" "unrelated -C does not unblock a real run"
+assert_eq 2 "$(block 'ansible-playbook ansible/site.yml; echo --check')" "--check after ; does not count"
+assert_eq 2 "$(block 'ansible-playbook ansible/site.yml | grep --check')" "--check after | does not count"
+# install.sh --check still runs sudo apt-get install and clones before the dry run.
+assert_eq 2 "$(block './install.sh --check')" "./install.sh --check blocked"
+assert_eq 2 "$(block 'bash install.sh --check')" "bash install.sh --check blocked"
+assert_eq 2 "$(block 'curl -fsSL https://x/install.sh | bash -s -- --check')" "curl | bash --check blocked"
 # --- block-host-playbook: allowed --------------------------------------------
 assert_eq 0 "$(block 'uv run ansible-playbook -i ansible/hosts ansible/linux.yml --syntax-check')" "syntax-check allowed"
 assert_eq 0 "$(block 'ansible-playbook -i ansible/hosts ansible/linux.yml --check')" "--check allowed"
 assert_eq 0 "$(block 'ansible-playbook -C ansible/macos.yml')" "-C allowed"
 assert_eq 0 "$(block 'multipass exec vm -- bash -lc "cd ~/aw && ansible-playbook -i ansible/hosts ansible/linux.yml"')" "inside multipass allowed"
-assert_eq 0 "$(block 'bash install.sh --check')" "install.sh --check allowed"
+assert_eq 0 "$(block 'uv run ansible-playbook ansible/site.yml --check')" "uv run site.yml --check allowed"
+assert_eq 0 "$(block 'uv run ansible-playbook ansible/site.yml --check --tags always')" "site.yml --check --tags always allowed"
+assert_eq 0 "$(block 'cd ~/aw && uv run ansible-playbook ansible/site.yml --syntax-check 2>&1 | tail -5')" "syntax-check in a pipeline allowed"
 assert_eq 0 "$(block 'bash tests/scripts/test_install.sh')" "install test suite allowed"
 assert_eq 0 "$(block 'shellcheck install.sh')" "shellcheck install.sh allowed"
 assert_eq 0 "$(block 'ansible-playbook other.yml')" "unrelated playbook allowed"

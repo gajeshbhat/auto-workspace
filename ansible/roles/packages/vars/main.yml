@@ -1,2 +1,6 @@
 ---
 packages_debs: "{{ deb_packages | default([]) | selectattr('architectures', 'contains', dpkg_arch) | list }}"
+# Snaps without `architectures` are published for every arch we support.
+packages_snaps: >-
+  {{ snap_packages | rejectattr('architectures', 'defined') | list
+     + snap_packages | selectattr('architectures', 'defined') | selectattr('architectures', 'contains', dpkg_arch) | list }}

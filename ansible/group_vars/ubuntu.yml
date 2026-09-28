@@ -78,13 +78,17 @@ vendor_repos:
 
 apt_packages: [brasero, deluge, libreoffice, simple-scan, vlc]
 
+# Optional `architectures`: only for snaps the store does not publish for every arch
+# (per the Snap Store API channel-map, v2/snaps/info/<name>).
 snap_packages:
   - name: lxd
   - name: multipass
   - name: powershell
     classic: true
   - name: proton-pass
+    architectures: [amd64]
   - name: spotify
+    architectures: [amd64]
 
 flatpak_packages:  # Flathub, verified publishers only
   - com.play0ad.zeroad
