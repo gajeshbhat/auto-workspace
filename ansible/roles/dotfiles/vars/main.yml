@@ -1,0 +1,6 @@
+---
+dotfiles_source_dir: "{{ workstation_home }}/.local/share/chezmoi"
+dotfiles_shell_rc: "{{ '.zshrc' if ansible_facts['os_family'] == 'Darwin' else '.bashrc' }}"
+# chezmoi status: column 1 != ' ' means the file changed locally since chezmoi last wrote it.
+dotfiles_local_edits: "{{ dotfiles_status.stdout_lines | default([]) | select('match', '^[^ ]') | list }}"
+dotfiles_pending: "{{ dotfiles_status.stdout_lines | default([]) | length > 0 }}"

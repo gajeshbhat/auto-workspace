@@ -1,0 +1,17 @@
+---
+- name: Create installer cache directory
+  ansible.builtin.file:
+    path: "{{ installer_cache }}"
+    state: directory
+    mode: "0755"
+
+- name: Download Claude Code installer
+  ansible.builtin.get_url:
+    url: https://claude.ai/install.sh
+    dest: "{{ installer_cache }}/claude-install.sh"
+    mode: "0755"
+
+- name: Install Claude Code
+  ansible.builtin.command: bash {{ installer_cache }}/claude-install.sh
+  args:
+    creates: "{{ local_bin }}/claude"

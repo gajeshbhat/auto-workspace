@@ -40,6 +40,10 @@
       tags: [virtualization]
     - role: languages
       tags: [languages]
+    - role: claude_code
+      tags: [claude]
+    - role: dotfiles
+      tags: [dotfiles]
 
 - name: Provision macOS workstation
   hosts: macos
@@ -53,3 +57,7 @@
       tags: [packages]
     - role: languages
       tags: [languages]
+    - role: claude_code
+      tags: [claude]
+    - role: dotfiles
+      tags: [dotfiles]

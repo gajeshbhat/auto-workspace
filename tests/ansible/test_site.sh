@@ -127,4 +127,19 @@ expect_task "Install Flutter with fvm"
 expect_task "Set global Flutter version"
 expect_task "Install dotrun"
 
+# claude_code + dotfiles
+expect_task "Install Claude Code"
+expect_task "Install chezmoi"
+expect_task "Check for an existing chezmoi source"
+expect_task "Back up the shell rc file before chezmoi takes it over"
+expect_task "Initialize dotfiles with chezmoi"
+expect_task "Pull dotfiles updates"
+expect_task "Read chezmoi status"
+expect_task "Warn about local dotfile edits"
+expect_task "Apply dotfiles"
+l_claude="$(printf '%s\n' "$TASKS" | grep -n 'Install Claude Code' | head -1 | cut -d: -f1)"
+l_init="$(printf '%s\n' "$TASKS" | grep -n 'Initialize dotfiles with chezmoi' | head -1 | cut -d: -f1)"
+assert_eq "true" "$([[ ${l_claude:-0} -gt 0 && ${l_claude:-0} -lt ${l_init:-0} ]] && echo true || echo false)" \
+  "Claude Code install precedes chezmoi init"
+
 finish

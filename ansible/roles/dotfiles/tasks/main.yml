@@ -1,0 +1,81 @@
+---
+- name: Create installer cache directory
+  ansible.builtin.file:
+    path: "{{ installer_cache }}"
+    state: directory
+    mode: "0755"
+
+- name: Download chezmoi installer
+  when: ansible_facts['os_family'] == 'Debian'
+  ansible.builtin.get_url:
+    url: https://get.chezmoi.io
+    dest: "{{ installer_cache }}/chezmoi-install.sh"
+    mode: "0755"
+
+- name: Install chezmoi
+  when: ansible_facts['os_family'] == 'Debian'
+  ansible.builtin.command: sh {{ installer_cache }}/chezmoi-install.sh -b {{ local_bin }}
+  args:
+    creates: "{{ local_bin }}/chezmoi"
+
+- name: Check for an existing chezmoi source
+  ansible.builtin.stat:
+    path: "{{ dotfiles_source_dir }}/.git"
+  register: dotfiles_source
+
+- name: Check for an existing shell rc file
+  ansible.builtin.stat:
+    path: "{{ workstation_home }}/{{ dotfiles_shell_rc }}"
+  register: dotfiles_rc
+
+- name: Back up the shell rc file before chezmoi takes it over
+  ansible.builtin.copy:
+    src: "{{ workstation_home }}/{{ dotfiles_shell_rc }}"
+    dest: "{{ workstation_home }}/{{ dotfiles_shell_rc }}.pre-chezmoi"
+    remote_src: true
+    force: false
+    mode: "0644"
+  when: not dotfiles_source.stat.exists and dotfiles_rc.stat.exists
+
+- name: Initialize dotfiles with chezmoi
+  ansible.builtin.command:
+    argv:
+      - chezmoi
+      - init
+      - --apply
+      - --force
+      - --branch
+      - "{{ dotfiles_branch }}"
+      - --promptString
+      - "Git name={{ git_user_name }}"
+      - --promptString
+      - "Git email={{ git_user_email }}"
+      - "{{ dotfiles_repo }}"
+  when: not dotfiles_source.stat.exists
+  changed_when: true
+
+- name: Update existing dotfiles
+  when: dotfiles_source.stat.exists
+  block:
+    - name: Pull dotfiles updates
+      ansible.builtin.command: chezmoi git -- pull --ff-only
+      register: dotfiles_pull
+      changed_when: "'Already up to date' not in dotfiles_pull.stdout"
+
+    - name: Read chezmoi status
+      ansible.builtin.command: chezmoi status
+      register: dotfiles_status
+      changed_when: false
+      check_mode: false
+
+    - name: Warn about local dotfile edits
+      ansible.builtin.debug:
+        msg: >-
+          Not applying dotfiles: edited locally since the last apply: {{ dotfiles_local_edits | join(', ') }}.
+          Run `dotfiles-backup` to keep them (or `chezmoi apply --force` to discard), then re-run.
+      when: dotfiles_local_edits | length > 0
+
+    - name: Apply dotfiles
+      ansible.builtin.command: chezmoi apply --no-tty
+      when: dotfiles_pending and dotfiles_local_edits | length == 0
+      changed_when: true
