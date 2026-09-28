@@ -1,0 +1,7 @@
+---
+profile: production
+offline: true  # collections come from requirements.yml via setup-dev.sh
+exclude_paths:
+  - .venv/
+  - .claude/
+  - docs/

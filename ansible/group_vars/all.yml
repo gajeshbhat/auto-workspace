@@ -1,0 +1,21 @@
+---
+supported_ubuntu_versions: ["24.04", "26.04"]
+supported_macos_versions: ["15", "26"]
+
+# The play runs as the invoking user; system tasks opt into become.
+workstation_user: "{{ ansible_facts['user_id'] }}"
+workstation_home: "{{ ansible_facts['user_dir'] }}"
+local_bin: "{{ workstation_home }}/.local/bin"
+installer_cache: "{{ workstation_home }}/.cache/auto-workspace"
+user_path: >-
+  {{ local_bin }}:{{ workstation_home }}/.cargo/bin:{{ workstation_home }}/fvm/bin:/usr/local/go/bin:/opt/homebrew/bin:/usr/local/bin:{{ ansible_facts['env']['PATH'] }}
+
+git_user_name: "Gajesh Bhat"
+git_user_email: "myemail@example.com"
+
+dotfiles_repo: "gajeshbhat/dotfiles"
+dotfiles_branch: "master"
+
+go_version: "1.27.1"
+fvm_version: "4.3.1"
+flutter_channel: "stable"

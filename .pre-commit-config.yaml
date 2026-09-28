@@ -1,0 +1,35 @@
+---
+# Python tool versions come from uv.lock (single source of truth); hooks call them via `uv run`.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+
+  - repo: local
+    hooks:
+      - id: yamllint
+        name: yamllint
+        entry: uv run --locked yamllint
+        language: system
+        types: [yaml]
+      - id: ansible-lint
+        name: ansible-lint
+        entry: uv run --locked ansible-lint
+        language: system
+        files: ^(ansible/|requirements\.yml$|\.ansible-lint$)
+        pass_filenames: false
+      - id: shellcheck
+        name: shellcheck
+        entry: uv run --locked shellcheck --severity=warning
+        language: system
+        types: [shell]
+      - id: shell-tests
+        name: shell tests
+        entry: tests/run.sh
+        language: system
+        files: ^(install\.sh|scripts/|tests/|\.claude/)
+        pass_filenames: false

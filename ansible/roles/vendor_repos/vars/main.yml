@@ -1,0 +1,17 @@
+---
+vendor_repos_enabled: "{{ vendor_repos | selectattr('architectures', 'contains', dpkg_arch) | list }}"
+vendor_repos_foreign_archs: "{{ vendor_repos_enabled | map(attribute='foreign_architectures', default=[]) | flatten | unique }}"
+# Source files written by the pre-v2 playbooks (or by vendor postinst scripts). Their Signed-By
+# differs from ours, which makes apt fail with "Conflicting values set for option Signed-By".
+vendor_repos_legacy_sources:
+  - docker.list
+  - virtualbox.list
+  - winehq-*.sources
+  - winehq-*.list  # old apt_repository filename winehq-<codename>, Signed-By winehq-archive.key
+  - protonvpn-stable.list
+  - mullvad.list
+  - google-chrome.list
+  - vscode.list
+  - github-cli.list
+  - wfg-ubuntu-0ad-*
+  - ppa_wfg_0ad_*.list  # old apt_repository ppa:wfg/0ad

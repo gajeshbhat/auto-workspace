@@ -1,0 +1,10 @@
+---
+galaxy_info:
+  author: Gajesh Bhat
+  description: KVM/libvirt, LXD initialization and the VirtualBox Extension Pack
+  license: MIT
+  min_ansible_version: "2.17"
+  platforms:
+    - name: Ubuntu
+      versions: [noble]
+dependencies: []

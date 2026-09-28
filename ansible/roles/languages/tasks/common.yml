@@ -1,0 +1,26 @@
+---
+- name: Download rustup installer
+  ansible.builtin.get_url:
+    url: https://sh.rustup.rs
+    dest: "{{ installer_cache }}/rustup-init.sh"
+    mode: "0755"
+
+- name: Install Rust (stable) with rustup
+  ansible.builtin.command: sh {{ installer_cache }}/rustup-init.sh -y --no-modify-path --default-toolchain stable
+  args:
+    creates: "{{ workstation_home }}/.cargo/bin/rustup"
+
+- name: Install Flutter with fvm
+  ansible.builtin.command: fvm install {{ flutter_channel }} --fvm-skip-input
+  args:
+    creates: "{{ workstation_home }}/fvm/versions/{{ flutter_channel }}"
+
+- name: Set global Flutter version
+  ansible.builtin.command: fvm global {{ flutter_channel }} --fvm-skip-input
+  args:
+    creates: "{{ workstation_home }}/fvm/default"
+
+- name: Install dotrun
+  ansible.builtin.command: uv tool install dotrun
+  args:
+    creates: "{{ local_bin }}/dotrun"

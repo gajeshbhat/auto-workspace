@@ -1,0 +1,18 @@
+---
+brew_formulae: [chezmoi, gh, git, go, htop, mas, python@3.13, screen, uv, vim]
+
+brew_casks:
+  - docker-desktop
+  - google-chrome
+  - localsend
+  - multipass
+  - protonvpn
+  - spotify
+  - utm
+  - virtualbox
+  - visual-studio-code
+  - vlc
+
+mas_apps:  # requires being signed in to the App Store
+  - id: 775737590
+    name: iA Writer

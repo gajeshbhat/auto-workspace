@@ -1,0 +1,46 @@
+---
+- name: Install KVM and libvirt
+  become: true
+  ansible.builtin.apt:
+    name:
+      - "{{ virtualization_qemu_package }}"
+      - qemu-utils
+      - libvirt-daemon-system
+      - libvirt-clients
+      - virtinst
+      - virt-manager
+      - bridge-utils
+    state: present
+
+# libvirtd.service is socket-activated and exits after 120s idle (--timeout 120), so manage the
+# socket: requiring the service to be running would re-start it (changed) on every later run.
+- name: Enable libvirtd socket activation
+  become: true
+  ansible.builtin.systemd_service:
+    name: libvirtd.socket
+    enabled: true
+    state: started
+
+- name: Add user to virtualization groups
+  become: true
+  ansible.builtin.user:
+    name: "{{ workstation_user }}"
+    groups: "{{ virtualization_groups }}"
+    append: true
+
+- name: Check for LXD storage pools
+  become: true
+  ansible.builtin.command: lxc storage list --format csv
+  register: virtualization_lxd_pools
+  changed_when: false
+  check_mode: false
+
+- name: Initialize LXD
+  become: true
+  ansible.builtin.command: lxd init --auto
+  when: virtualization_lxd_pools.stdout | length == 0
+  changed_when: true
+
+- name: VirtualBox Extension Pack
+  ansible.builtin.import_tasks: virtualbox.yml
+  when: dpkg_arch == 'amd64'

@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  author: Gajesh Bhat
+  description: Base system packages and package managers
+  license: MIT
+  min_ansible_version: "2.17"
+  platforms:
+    - name: Ubuntu
+      versions: [noble]
+    - name: macOS
+      versions: [all]
+dependencies: []

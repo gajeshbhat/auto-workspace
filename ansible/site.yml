@@ -1,0 +1,63 @@
+---
+- name: Check platform
+  hosts: localhost
+  gather_facts: true
+  tasks:
+    - name: Assert supported platform
+      tags: [always]
+      ansible.builtin.assert:
+        that: >-
+          (ansible_facts['distribution'] == 'Ubuntu'
+           and ansible_facts['distribution_version'] in supported_ubuntu_versions)
+          or (ansible_facts['os_family'] == 'Darwin'
+           and (ansible_facts['distribution_major_version'] | string) in supported_macos_versions)
+        fail_msg: >-
+          Unsupported platform: {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}.
+          Supported: Ubuntu {{ supported_ubuntu_versions | join(', ') }}; macOS {{ supported_macos_versions | join(', ') }}.
+        quiet: true
+
+    - name: Group host by OS
+      tags: [always]
+      ansible.builtin.group_by:
+        key: "{{ 'macos' if ansible_facts['os_family'] == 'Darwin' else 'ubuntu' }}"
+      changed_when: false
+
+- name: Provision Ubuntu workstation
+  hosts: ubuntu
+  gather_facts: false
+  environment:
+    PATH: "{{ user_path }}"
+  roles:
+    - role: base
+      tags: [base]
+    - role: vendor_repos
+      tags: [repos]
+    - role: packages
+      tags: [packages]
+    - role: docker
+      tags: [docker]
+    - role: virtualization
+      tags: [virtualization]
+    - role: languages
+      tags: [languages]
+    - role: claude_code
+      tags: [claude]
+    - role: dotfiles
+      tags: [dotfiles]
+
+- name: Provision macOS workstation
+  hosts: macos
+  gather_facts: false
+  environment:
+    PATH: "{{ user_path }}"
+  roles:
+    - role: base
+      tags: [base]
+    - role: packages
+      tags: [packages]
+    - role: languages
+      tags: [languages]
+    - role: claude_code
+      tags: [claude]
+    - role: dotfiles
+      tags: [dotfiles]

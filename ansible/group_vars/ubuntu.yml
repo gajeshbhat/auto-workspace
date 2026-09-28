@@ -1,0 +1,101 @@
+---
+dpkg_arch: "{{ {'x86_64': 'amd64', 'aarch64': 'arm64'}[ansible_facts['architecture']] }}"
+ubuntu_release: "{{ ansible_facts['distribution_release'] }}"
+
+base_packages:
+  - build-essential
+  - curl
+  - dkms
+  - flatpak
+  - git
+  - htop
+  - ifstat
+  - "linux-headers-{{ ansible_facts['kernel'] }}"
+  - net-tools
+  - nmap
+  - python3-debian
+  - screen
+  - snapd
+  - tmux
+  - unzip
+  - vim
+  - vnstat
+  - wget
+
+# Vendor apt repositories. `key` is fetched by deb822_repository into /etc/apt/keyrings.
+# `architectures` lists the host archs the vendor supports; entries not matching dpkg_arch are skipped.
+vendor_repos:
+  - name: docker
+    uri: https://download.docker.com/linux/ubuntu
+    suite: "{{ ubuntu_release }}"
+    component: stable
+    key: https://download.docker.com/linux/ubuntu/gpg
+    architectures: [amd64, arm64]
+    packages: [docker-ce, docker-ce-cli, containerd.io, docker-buildx-plugin, docker-compose-plugin]
+  - name: virtualbox
+    uri: https://download.virtualbox.org/virtualbox/debian
+    suite: "{{ ubuntu_release }}"
+    component: contrib
+    key: https://www.virtualbox.org/download/oracle_vbox_2016.asc
+    architectures: [amd64]
+    packages: [virtualbox-7.2]
+  - name: winehq
+    uri: https://dl.winehq.org/wine-builds/ubuntu
+    suite: "{{ ubuntu_release }}"
+    component: main
+    key: https://dl.winehq.org/wine-builds/winehq.key
+    architectures: [amd64]
+    foreign_architectures: [i386]
+    packages: [winehq-stable]
+  - name: vscode
+    uri: https://packages.microsoft.com/repos/code
+    suite: stable
+    component: main
+    key: https://packages.microsoft.com/keys/microsoft.asc
+    architectures: [amd64, arm64]
+    packages: [code]
+  - name: google-chrome
+    uri: https://dl.google.com/linux/chrome/deb
+    suite: stable
+    component: main
+    key: https://dl.google.com/linux/linux_signing_key.pub
+    architectures: [amd64]
+    packages: [google-chrome-stable]
+  - name: protonvpn
+    uri: https://repo.protonvpn.com/debian
+    suite: stable
+    component: main
+    key: https://repo.protonvpn.com/debian/public_key.asc
+    architectures: [amd64, arm64]
+    packages: [proton-vpn-gnome-desktop]
+  - name: github-cli
+    uri: https://cli.github.com/packages
+    suite: stable
+    component: main
+    key: https://cli.github.com/packages/githubcli-archive-keyring.gpg
+    architectures: [amd64, arm64]
+    packages: [gh]
+
+apt_packages: [brasero, deluge, libreoffice, simple-scan, vlc]
+
+# Optional `architectures`: only for snaps the store does not publish for every arch
+# (per the Snap Store API channel-map, v2/snaps/info/<name>).
+snap_packages:
+  - name: lxd
+  - name: multipass
+  - name: powershell
+    classic: true
+  - name: proton-pass
+    architectures: [amd64]
+  - name: spotify
+    architectures: [amd64]
+
+flatpak_packages:  # Flathub, verified publishers only
+  - com.play0ad.zeroad
+  - org.gnome.Snapshot
+  - org.localsend.localsend_app
+
+deb_packages:  # vendor .deb downloads without an apt repo
+  - name: zoom
+    url: https://zoom.us/client/latest/zoom_amd64.deb
+    architectures: [amd64]
