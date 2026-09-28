@@ -108,7 +108,12 @@ done
 expect_task "Enable and start Docker"
 expect_task "Add user to the docker group"
 expect_task "Install KVM and libvirt"
-expect_task "Enable and start libvirtd"
+expect_task "Enable libvirtd socket activation"
+# Ubuntu's libvirtd.service is socket-activated and exits after 120s idle (--timeout 120), so
+# managing the service with state: started re-starts it (changed) on every later run.
+vr_tasks="ansible/roles/virtualization/tasks/main.yml"
+assert_eq "" "$(grep -nE 'name: libvirtd(\.service)?$' "$vr_tasks" || true)" "libvirtd.service is not managed directly"
+assert_contains "$(cat "$vr_tasks")" "name: libvirtd.socket" "libvirtd.socket is enabled and started"
 expect_task "Add user to virtualization groups"
 expect_task "Check for LXD storage pools"
 expect_task "Initialize LXD"

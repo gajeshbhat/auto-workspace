@@ -12,10 +12,12 @@
       - bridge-utils
     state: present
 
-- name: Enable and start libvirtd
+# libvirtd.service is socket-activated and exits after 120s idle (--timeout 120), so manage the
+# socket: requiring the service to be running would re-start it (changed) on every later run.
+- name: Enable libvirtd socket activation
   become: true
   ansible.builtin.systemd_service:
-    name: libvirtd
+    name: libvirtd.socket
     enabled: true
     state: started
 
