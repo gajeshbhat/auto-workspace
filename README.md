@@ -26,7 +26,7 @@ Edit the lists in `ansible/group_vars/`: `ubuntu.yml` (apt, vendor repos, snaps,
 
 - Log out and back in after the first run (new groups: docker, libvirt, kvm, lxd, vboxusers).
 - Secure Boot: VirtualBox kernel modules need a one-time MOK enrollment prompt on reboot.
-- The installer asks for your password once up front (Xcode Command Line Tools install headlessly). On macOS, direct `ansible-playbook` runs prompt for it themselves - no `-K` needed.
+- Password prompts come from `sudo` and Ansible themselves (the script never handles it): once for `sudo` up front, once more for Ansible. Xcode Command Line Tools install headlessly. On macOS, run `ansible-playbook` without `-K`; the play prompts itself.
 - macOS: sign in to the App Store first (for iA Writer).
 - Machines set up by the old playbooks keep the VS Code snap and the 0 A.D. deb next to the new apt/Flatpak installs; remove them with `sudo snap remove code` and `sudo apt remove 0ad`.
 - Existing dotfiles are saved as `<file>.pre-chezmoi` before the first apply; your old `~/.gitconfig` becomes `~/.gitconfig.local`, which still applies.

@@ -88,22 +88,20 @@ assert_eq "changed" "$(cat "$TMP/clone/keep.txt")" "dirty clone: local edit pres
 assert_contains "$(cat "$INSTALL")" "ansible/site.yml" "install.sh runs ansible/site.yml"
 assert_eq "" "$(grep -E 'linux\.yml|macos\.yml' "$INSTALL" || true)" "install.sh no longer references linux/macos.yml"
 
-# --- one-time sudo password -> ansible_become_password vars file -------------
-# -K never sets ansible_become_password, which Homebrew casks need (sudo inside brew has no tty).
-assert_eq "" "$(grep -vE '^[[:space:]]*#' "$INSTALL" | grep -nE '(^|[" ])-K([" ]|$)' || true)" "install.sh no longer passes -K"
-pw=$'p a"ss\\w0rd\'$x'
-vf="$(printf '%s' "$pw" | AW_SOURCED=1 bash -c 'source "$1"; write_become_vars' _ "$INSTALL")"
-assert_eq "true" "$(test -f "$vf" && echo true || echo false)" "become vars file created"
-assert_eq "600" "$(stat -c %a "$vf" 2>/dev/null || stat -f %Lp "$vf")" "become vars file is mode 600"
-assert_eq "$pw" "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["ansible_become_password"], end="")' "$vf")" \
-  "become vars file round-trips the password exactly"
-rm -f "$vf"
+# --- sudo handling: the script never reads or stores the password -----------
+# A pasted `curl | bash` that reads the login password, checks it with `sudo -S` and writes it to
+# a file is the infostealer ("ClickFix") pattern macOS blocks as "Malicious Script Blocked".
+code="$(grep -vE '^[[:space:]]*#' "$INSTALL")"
+assert_eq "" "$(printf '%s\n' "$code" | grep -nE 'read +-[a-z]*s|sudo +-S|aw-become|ansible_become_password|SUDO_PASSWORD' || true)" \
+  "install.sh never reads, validates or stores the password"
+assert_contains "$code" "sudo -v" "install.sh primes sudo with its own prompt (sudo -v)"
+assert_contains "$code" "</dev/tty" "ansible-playbook reads prompts from the terminal under curl | bash"
 
-args_with="$(AW_SOURCED=1 bash -c 'source "$1"; CHECK=false; playbook_args /tmp/aw-vars.json' _ "$INSTALL")"
-assert_eq "ansible/site.yml -e @/tmp/aw-vars.json" "$args_with" "playbook args pass the vars file"
-args_without="$(AW_SOURCED=1 bash -c 'source "$1"; CHECK=true; playbook_args ""' _ "$INSTALL")"
-assert_eq "ansible/site.yml --check" "$args_without" "no vars file when sudo needs no password"
-assert_contains "$(cat "$INSTALL")" "trap" "install.sh removes the vars file on exit"
+args() { AW_SOURCED=1 bash -c 'source "$1"; CHECK="$2"; playbook_args "$3" "$4"' _ "$INSTALL" "$@"; }
+assert_eq "ansible/site.yml -K" "$(args false ubuntu true)" "ubuntu + sudo needs a password -> -K"
+assert_eq "ansible/site.yml" "$(args false ubuntu false)" "ubuntu + passwordless sudo -> no -K"
+assert_eq "ansible/site.yml" "$(args false macos true)" "macos -> no -K (the macOS play prompts itself)"
+assert_eq "ansible/site.yml -K --check" "$(args true ubuntu true)" "--check appended"
 
 # --- headless Xcode Command Line Tools --------------------------------------
 clt() { AW_SOURCED=1 bash -c 'source "$1"; clt_label_from "$2"' _ "$INSTALL" "$1"; }

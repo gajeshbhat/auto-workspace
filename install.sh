@@ -78,7 +78,6 @@ install_clt() {
   touch "$flag"
   label="$(clt_label_from "$(softwareupdate -l 2>&1 || true)")"
   if [[ -n "$label" ]]; then
-    refresh_sudo
     sudo softwareupdate -i "$label" --verbose
   fi
   rm -f "$flag"
@@ -89,44 +88,25 @@ install_clt() {
   fi
 }
 
-# Asks for the sudo password once (from the terminal, also under `curl | bash`) unless sudo is
-# passwordless, validates it and caches sudo (Homebrew's non-interactive installer only uses
-# `sudo -n`). Prints the password on stdout; prints nothing when sudo needs no password.
-read_sudo_password() {
-  local pw attempt
-  if sudo -k -n true 2>/dev/null; then
-    return 0
-  fi
-  for attempt in 1 2 3; do
-    printf '[+] Password for %s (sudo, asked once): ' "$USER" >/dev/tty
-    IFS= read -rs pw </dev/tty
-    printf '\n' >/dev/tty
-    if printf '%s\n' "$pw" | sudo -S -p '' -v 2>/dev/null; then
-      printf '%s' "$pw"
-      return 0
-    fi
-    err "Wrong password (attempt $attempt/3)."
-  done
-  err "Could not validate the sudo password."
-  return 1
+# This script never reads or stores the password: a pasted `curl | bash` that does is exactly
+# what macOS blocks as "Malicious Script Blocked". sudo prompts for itself (sudo -v), and a
+# background loop keeps the timestamp fresh through the long CLT/Homebrew installs (Homebrew's
+# non-interactive installer only uses `sudo -n`).
+prime_sudo() {
+  log "sudo may ask for your password (the script never sees it)."
+  sudo -v
+  while kill -0 "$$" 2>/dev/null; do
+    sudo -n true 2>/dev/null
+    sleep 50
+  done &
+  SUDO_KEEPALIVE_PID=$!
+  # shellcheck disable=SC2064  # expand now: stop this exact loop on any exit
+  trap "kill $SUDO_KEEPALIVE_PID 2>/dev/null || true" EXIT
 }
 
-# Re-validates the cached sudo timestamp before sudo-using steps (it expires after ~5 minutes,
-# and the headless Command Line Tools install can take longer).
-refresh_sudo() {
-  if [[ -n "${SUDO_PASSWORD:-}" ]]; then
-    printf '%s\n' "$SUDO_PASSWORD" | sudo -S -p '' -v 2>/dev/null || true
-  fi
-}
-
-# Reads the password on stdin, writes {"ansible_become_password": ...} to a new mode-600 temp
-# file and prints its path. Ansible gets it via `-e @file`; -K never sets the variable.
-write_become_vars() {
-  local file
-  file="$(mktemp "${TMPDIR:-/tmp}/aw-become.XXXXXX")"
-  chmod 600 "$file"
-  python3 -c 'import json, sys; json.dump({"ansible_become_password": sys.stdin.read()}, open(sys.argv[1], "w"))' "$file"
-  printf '%s' "$file"
+# 0 when sudo works without any password (NOPASSWD), ignoring a cached timestamp.
+sudo_is_passwordless() {
+  sudo -k -n true 2>/dev/null
 }
 
 ensure_prereqs() {
@@ -134,7 +114,6 @@ ensure_prereqs() {
   if [[ "$platform" == "ubuntu" ]]; then
     if ! command -v git >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1; then
       log "Installing git and curl (sudo)..."
-      refresh_sudo
       sudo apt-get update -y
       sudo apt-get install -y git curl
     fi
@@ -143,7 +122,7 @@ ensure_prereqs() {
   install_clt
   if ! command -v brew >/dev/null 2>&1 && [[ ! -x /opt/homebrew/bin/brew && ! -x /usr/local/bin/brew ]]; then
     log "Installing Homebrew..."
-    refresh_sudo  # the installer only uses `sudo -n`, so the timestamp must be fresh
+    # prime_sudo keeps the sudo timestamp fresh; the installer only uses `sudo -n`
     NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   fi
   if [[ -x /opt/homebrew/bin/brew ]]; then
@@ -184,23 +163,31 @@ sync_repo() {
   fi
 }
 
-# playbook_args VARS_FILE -> ansible-playbook arguments (VARS_FILE may be empty).
+# playbook_args PLATFORM NEEDS_PASSWORD(true|false) -> ansible-playbook arguments.
+# Ubuntu uses -K; the macOS play prompts for ansible_become_password itself (Homebrew casks need
+# it as a variable, which -K never sets).
 playbook_args() {
   local args=(ansible/site.yml)
-  if [[ -n "$1" ]]; then args+=(-e "@$1"); fi
+  if [[ "$1" == "ubuntu" && "$2" == "true" ]]; then args+=(-K); fi
   if [[ "$CHECK" == "true" ]]; then args+=(--check); fi
   echo "${args[*]}"
 }
 
-run_playbook() { # run_playbook VARS_FILE
-  local args
+run_playbook() { # run_playbook PLATFORM
+  local args needs_password=true
   cd "$DIR"
   log "Syncing pinned toolchain..."
   uv sync --locked --group dev
   uv run --locked ansible-galaxy collection install -r requirements.yml
-  read -ra args <<<"$(playbook_args "$1")"
+  if sudo_is_passwordless; then needs_password=false; fi
+  read -ra args <<<"$(playbook_args "$1" "$needs_password")"
   log "Running: ansible-playbook ${args[*]}"
-  uv run --locked ansible-playbook "${args[@]}"
+  # stdin from the terminal: under `curl | bash` it is the pipe, and Ansible's prompts need a tty.
+  if (exec </dev/tty) 2>/dev/null; then
+    uv run --locked ansible-playbook "${args[@]}" </dev/tty
+  else
+    uv run --locked ansible-playbook "${args[@]}"
+  fi
 }
 
 main() {
@@ -208,19 +195,11 @@ main() {
   local platform
   platform="$(detect_platform)"
   log "Target: $platform (branch $BRANCH, dir $DIR, check=$CHECK)"
-  local vars_file=""
-  SUDO_PASSWORD="$(read_sudo_password)"
+  prime_sudo
   ensure_prereqs "$platform"
   ensure_uv
   sync_repo
-  # Written only now: on a fresh Mac, python3 is a stub until the Command Line Tools exist.
-  if [[ -n "$SUDO_PASSWORD" ]]; then
-    vars_file="$(printf '%s' "$SUDO_PASSWORD" | write_become_vars)"
-    # shellcheck disable=SC2064  # expand now: remove this exact file on any exit
-    trap "rm -f '$vars_file'" EXIT
-  fi
-  unset SUDO_PASSWORD
-  run_playbook "$vars_file"
+  run_playbook "$platform"
   log "Done. Log out and back in to apply group changes; a reboot may be required."
 }
 
