@@ -48,6 +48,14 @@
 - name: Provision macOS workstation
   hosts: macos
   gather_facts: false
+  # Homebrew casks run sudo themselves (no tty under Ansible), so they need the password as a
+  # variable; -K never sets ansible_become_password. install.sh passes it via -e @file,
+  # which skips this prompt.
+  vars_prompt:
+    - name: ansible_become_password
+      prompt: "macOS login password (for sudo and Homebrew casks)"
+      private: true
+      unsafe: true
   environment:
     PATH: "{{ user_path }}"
   roles:

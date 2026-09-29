@@ -228,4 +228,16 @@ readme="$(cat README.md)"
 assert_contains "$readme" "cd ~/auto-workspace && uv run ansible-playbook ansible/site.yml -K --tags languages" "README tag example is runnable"
 assert_eq "" "$(grep -n "only changes what's missing" README.md || true)" "README does not claim re-runs change nothing"
 
+# macOS: -K never sets ansible_become_password, which Homebrew casks need for their own sudo.
+# The macOS play prompts for it (skipped when install.sh passes it via -e @file).
+mac_prompt="$(.venv/bin/python - <<'EOF'
+import yaml
+plays = yaml.safe_load(open("ansible/site.yml"))
+mac = next(p for p in plays if p.get("hosts") == "macos")
+print(",".join(f"{v['name']}:{v.get('private')}" for v in mac.get("vars_prompt", [])))
+EOF
+)"
+assert_eq "ansible_become_password:True" "$mac_prompt" "macOS play prompts (privately) for ansible_become_password"
+assert_contains "$(cat ansible/roles/packages/tasks/darwin.yml)" 'sudo_password: "{{ ansible_become_password' "casks get the sudo password"
+
 finish
