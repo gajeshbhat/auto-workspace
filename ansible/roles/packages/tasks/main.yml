@@ -41,3 +41,7 @@
   loop_control:
     label: "{{ item.item.name }}"
   when: "'install ok installed' not in item.stdout"
+  register: packages_deb_install
+  retries: 3
+  delay: 15
+  until: packages_deb_install is succeeded

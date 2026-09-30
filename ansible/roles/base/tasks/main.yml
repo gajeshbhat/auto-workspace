@@ -1,16 +1,12 @@
 ---
-- name: Upgrade installed packages
-  become: true
-  ansible.builtin.apt:
-    update_cache: true
-    cache_valid_time: 3600
-    upgrade: dist
-
+# The full system upgrade runs in vendor_repos, once every apt source exists.
 - name: Install base packages
   become: true
   ansible.builtin.apt:
     name: "{{ base_packages }}"
     state: present
+    update_cache: true
+    cache_valid_time: 3600
 
 - name: Add Flathub remote
   become: true

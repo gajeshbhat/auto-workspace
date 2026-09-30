@@ -220,6 +220,18 @@ assert_eq "" "$mac_refs" "no macOS references outside tests/ and historical docs
 plays="$(.venv/bin/python -c 'import yaml; print(",".join(p["hosts"] for p in yaml.safe_load(open("ansible/site.yml"))))')"
 assert_eq "localhost,ubuntu" "$plays" "site.yml has only the platform check and the Ubuntu play"
 
+# Idempotency (found by CI): upgrade only after the vendor repos exist, so vendor packages that were
+# already installed (runner images, machines set up by the old playbooks) are upgraded in run 1,
+# not run 2; then re-assert repo files a package upgrade (Chrome) may rewrite.
+line_of() { printf '%s\n' "$TASKS" | grep -n "$1" | head -1 | cut -d: -f1; }
+l_vinst="$(line_of 'vendor_repos : Install vendor packages')"
+l_upg="$(line_of 'Upgrade installed packages')"
+l_reassert="$(line_of 'Reassert vendor apt repositories')"
+assert_eq "true" "$([[ ${l_vinst:-0} -gt 0 && ${l_vinst:-0} -lt ${l_upg:-0} && ${l_upg:-0} -lt ${l_reassert:-0} ]] && echo true || echo false)" \
+  "system upgrade runs after vendor packages and before the repo re-assert"
+assert_contains "$(grep -A12 'Install .deb packages from vendor URLs' ansible/roles/packages/tasks/main.yml)" "retries:" \
+  "vendor .deb downloads retry (zoom.us resets connections)"
+
 # CI must provision every supported platform: the provision matrix covers exactly
 # supported_ubuntu_versions (group_vars/all.yml, the single source of truth), on amd64 and arm64.
 ci_cover="$(.venv/bin/python - <<'EOF'
