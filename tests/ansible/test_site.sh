@@ -240,4 +240,19 @@ EOF
 assert_eq "ansible_become_password:True" "$mac_prompt" "macOS play prompts (privately) for ansible_become_password"
 assert_contains "$(cat ansible/roles/packages/tasks/darwin.yml)" 'sudo_password: "{{ ansible_become_password' "casks get the sudo password"
 
+# macOS XProtect kills any download from Galaxy's S3 artifact storage (even plain curl), while the
+# same code from GitHub is fine: every collection comes from GitHub, and installs never resolve
+# dependencies from Galaxy (--no-deps; each dependency is listed explicitly).
+req_sources="$(.venv/bin/python - <<'EOF'
+import yaml
+cols = yaml.safe_load(open("requirements.yml"))["collections"]
+print(",".join(f"{c.get('type')}:{c['name'].startswith('https://github.com/')}" for c in cols))
+EOF
+)"
+assert_eq "git:True,git:True" "$req_sources" "collections (community.general + its dependency) come from GitHub via git"
+for f in install.sh scripts/setup-dev.sh scripts/test-in-vm.sh; do
+  line="$(grep -h 'collection install' "$f")"
+  assert_contains "$line" "--no-deps" "$f installs collections with --no-deps"
+done
+
 finish

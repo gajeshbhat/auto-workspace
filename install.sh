@@ -178,7 +178,7 @@ run_playbook() { # run_playbook PLATFORM
   cd "$DIR"
   log "Syncing pinned toolchain..."
   uv sync --locked --group dev
-  uv run --locked ansible-galaxy collection install -r requirements.yml
+  uv run --locked ansible-galaxy collection install --no-deps -r requirements.yml
   if sudo_is_passwordless; then needs_password=false; fi
   read -ra args <<<"$(playbook_args "$1" "$needs_password")"
   log "Running: ansible-playbook ${args[*]}"
