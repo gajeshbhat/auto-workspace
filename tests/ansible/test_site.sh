@@ -220,6 +220,26 @@ assert_eq "" "$mac_refs" "no macOS references outside tests/ and historical docs
 plays="$(.venv/bin/python -c 'import yaml; print(",".join(p["hosts"] for p in yaml.safe_load(open("ansible/site.yml"))))')"
 assert_eq "localhost,ubuntu" "$plays" "site.yml has only the platform check and the Ubuntu play"
 
+# CI must provision every supported platform: the provision matrix covers exactly
+# supported_ubuntu_versions (group_vars/all.yml, the single source of truth), on amd64 and arm64.
+ci_cover="$(.venv/bin/python - <<'EOF'
+import yaml
+supported = yaml.safe_load(open("ansible/group_vars/all.yml"))["supported_ubuntu_versions"]
+try:
+    wf = yaml.safe_load(open(".github/workflows/ci.yml"))
+    runners = wf["jobs"]["provision"]["strategy"]["matrix"]["runner"]
+except (FileNotFoundError, KeyError, TypeError):
+    runners = []
+want = sorted(f"ubuntu-{v}{arch}" for v in supported for arch in ("", "-arm"))
+print("ok" if sorted(runners) == want else f"matrix={sorted(runners)} want={want}")
+EOF
+)"
+assert_eq "ok" "$ci_cover" "CI provisions every supported Ubuntu release on amd64 + arm64"
+ci="$(cat .github/workflows/ci.yml 2>/dev/null || true)"
+assert_eq "" "$(printf '%s\n' "$ci" | grep -nE 'uses: [^@]+@[^0-9a-f]|uses: [^@]+@[0-9a-f]{1,39}([^0-9a-f]|$)' | grep -v '\./' || true)" \
+  "CI actions are pinned to full commit SHAs"
+assert_contains "$ci" "contents: read" "CI token is read-only"
+
 # macOS XProtect kills any download from Galaxy's S3 artifact storage (even plain curl), while the
 # same code from GitHub is fine: every collection comes from GitHub, and installs never resolve
 # dependencies from Galaxy (--no-deps; each dependency is listed explicitly).

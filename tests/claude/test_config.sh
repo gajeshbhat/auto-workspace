@@ -59,4 +59,8 @@ assert_contains "$(cat "$ROOT/.claude/skills/add-app/SKILL.md")" "group_vars" "a
 # ansible/linux.yml) counts as stale.
 assert_eq "" "$(grep -rnE 'ansible/linux\.yml|ansible/macos\.yml|playbooks/linux|install-gui-apps|test-linux-playbook' "$ROOT"/README.md "$ROOT"/docs/development.md "$ROOT"/AGENTS.md "$ROOT"/CLAUDE.md "$ROOT"/.claude || true)" "no stale paths in docs"
 
+# Standing rule: CI provisions every supported platform (enforced in tests/ansible/test_site.sh).
+assert_contains "$(cat "$ROOT/AGENTS.md")" "CI must provision every supported platform" "AGENTS.md states the CI platform rule"
+assert_contains "$(cat "$ROOT/CLAUDE.md")" ".github/workflows/ci.yml" "CLAUDE.md points at the CI workflow"
+
 finish

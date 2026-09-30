@@ -1,0 +1,60 @@
+---
+name: CI
+
+"on":
+  push:
+    branches: [master]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"  # weekly: catch upstream breakage (vendor repos, snaps, Flatpaks)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash  # bash -eo pipefail
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: ./.github/actions/setup-toolchain
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+      - name: Lint and shell tests
+        run: uv run --locked pre-commit run --all-files --show-diff-on-failure
+
+  # Real provisioning on every supported platform (must match supported_ubuntu_versions in
+  # ansible/group_vars/all.yml on amd64 and arm64 - enforced by tests/ansible/test_site.sh).
+  provision:
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm, ubuntu-26.04, ubuntu-26.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: ./.github/actions/setup-toolchain
+      - name: Provision
+        run: uv run --locked ansible-playbook ansible/site.yml 2>&1 | tee run1.log
+      - name: Provision again (must change nothing)
+        run: |
+          uv run --locked ansible-playbook ansible/site.yml 2>&1 | tee run2.log
+          changed="$(TIV_SOURCED=1 bash -c 'source scripts/test-in-vm.sh; recap_changed run2.log')"
+          if [[ "$changed" != "0" ]]; then
+            echo "::error::Second run reported changed=$changed (not idempotent)"
+            grep -E '^changed:' -B2 run2.log | grep -E '^TASK' || true
+            exit 1
+          fi

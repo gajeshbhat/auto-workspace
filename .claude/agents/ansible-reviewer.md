@@ -17,6 +17,7 @@ Check every changed task against this list:
 7. **Docs.** A new app should be listed in `README.md`.
 8. **Secrets.** No credentials, tokens or personal emails in YAML. Qt credentials come from the environment only.
 9. **Variable naming.** Registered/set variables inside a role are prefixed with the role name.
+10. **CI coverage.** If `supported_ubuntu_versions` changed, the `provision` matrix in `.github/workflows/ci.yml` must change with it (every release on `ubuntu-<ver>` and `ubuntu-<ver>-arm`).
 
 Output one finding per line, most severe first:
 

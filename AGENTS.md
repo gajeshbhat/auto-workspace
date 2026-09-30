@@ -60,7 +60,8 @@ Tool versions are pinned in `pyproject.toml`/`uv.lock` and collections in `requi
 - FQCN for every module (`ansible.builtin.*`, `community.general.*`, …).
 - `become` is set per task, not at the play level.
 - A second run of any task must report `changed=0`.
+- **CI must provision every supported platform.** `supported_ubuntu_versions` in `ansible/group_vars/all.yml` is the single list of supported releases; the `provision` matrix in `.github/workflows/ci.yml` must run each of them on amd64 and arm64 (`ubuntu-<ver>` and `ubuntu-<ver>-arm`). Adding or dropping a platform means changing both in the same commit; `tests/ansible/test_site.sh` fails otherwise. A platform GitHub cannot host is not supported.
 
 ## Definition of done
 
-`uv run pre-commit run -a` and `tests/run.sh` pass, the relevant playbook passes `--syntax-check`, and behavior changes to playbooks have been exercised in a VM (or the gap is stated in the PR).
+`uv run pre-commit run -a` and `tests/run.sh` pass, the relevant playbook passes `--syntax-check`, and CI (`.github/workflows/ci.yml`: lint + real provisioning with an idempotency re-run on every supported platform) is green on the PR.
