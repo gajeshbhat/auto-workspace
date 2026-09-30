@@ -25,7 +25,6 @@ assert_eq 0 "$r" "site.yml passes --syntax-check"
 
 assert_contains "$TASKS" "play #1 (localhost): Check platform" "play 1 checks platform"
 assert_contains "$TASKS" "play #2 (ubuntu): Provision Ubuntu workstation" "play 2 is Ubuntu"
-assert_contains "$TASKS" "play #3 (macos): Provision macOS workstation" "play 3 is macOS"
 expect_task "Assert supported platform"
 expect_task "Group host by OS"
 
@@ -35,7 +34,7 @@ assert_contains "$TAGGED" "Group host by OS" "--tags keeps group_by (always)"
 
 # Platform assert (success criterion 2). --check --tags always runs only play 1 (assert + group_by):
 # no become, no changes. With the supported list emptied, this host must be rejected.
-r=0; out="$(.venv/bin/ansible-playbook ansible/site.yml --check --tags always -e '{"supported_ubuntu_versions": [], "supported_macos_versions": []}' 2>&1)" || r=$?
+r=0; out="$(.venv/bin/ansible-playbook ansible/site.yml --check --tags always -e '{"supported_ubuntu_versions": []}' 2>&1)" || r=$?
 assert_eq "true" "$([[ $r -ne 0 ]] && echo true || echo false)" "unsupported platform fails"
 assert_contains "$out" "Unsupported platform" "unsupported platform message"
 r=0; .venv/bin/ansible-playbook ansible/site.yml --check --tags always >/dev/null 2>&1 || r=$?
@@ -51,8 +50,6 @@ assert_eq "false" "$(test -e ansible/linux.yml -o -e ansible/playbooks && echo t
 expect_task "Upgrade installed packages"
 expect_task "Install base packages"
 expect_task "Add Flathub remote"
-expect_task "Check Homebrew is installed"
-expect_task "Require Homebrew"
 
 # vendor_repos
 expect_task "Find legacy apt sources from the previous playbooks"
@@ -89,13 +86,10 @@ expect_task "Install snaps"
 expect_task "Install Flatpaks"
 expect_task "Check which .deb packages are installed"
 expect_task "Install .deb packages from vendor URLs"
-expect_task "Install Homebrew formulae"
-expect_task "Install Homebrew casks"
-expect_task "Install Mac App Store apps"
-data="$(cat ansible/group_vars/ubuntu.yml ansible/group_vars/macos.yml)"
+data="$(cat ansible/group_vars/ubuntu.yml)"
 for p in brasero deluge libreoffice simple-scan vlc lxd multipass powershell proton-pass spotify \
   com.play0ad.zeroad org.gnome.Snapshot org.localsend.localsend_app zoom \
-  docker-desktop google-chrome localsend protonvpn utm visual-studio-code 775737590 gh chezmoi uv go; do
+  google-chrome localsend protonvpn gh; do
   assert_contains "$data" "$p" "package data lists $p"
 done
 for gone in postman steam telegram mullvad tightvnc microk8s juju maas charmcraft snapcraft transmission pipx astral-uv; do
@@ -125,7 +119,6 @@ expect_task "Install Flutter desktop build dependencies"
 expect_task "Read installed Go version"
 expect_task "Install Go"
 expect_task "Install uv"
-expect_task "Tap fvm"
 expect_task "Install Rust (stable) with rustup"
 expect_task "Install fvm"
 expect_task "Install Flutter with fvm"
@@ -187,7 +180,7 @@ assert_eq '["lxd","multipass","powershell"]' \
   "$(ev "packages_snaps | map(attribute='name') | list" "${snap_args[@]}" -e '{"dpkg_arch": "arm64"}')" "arm64 skips amd64-only snaps"
 assert_eq '["lxd","multipass","powershell","proton-pass","spotify"]' \
   "$(ev "packages_snaps | map(attribute='name') | list" "${snap_args[@]}" -e '{"dpkg_arch": "amd64"}')" "amd64 installs every snap"
-assert_contains "$(cat ansible/roles/packages/tasks/debian.yml)" 'loop: "{{ packages_snaps }}"' "snap install loops over the arch-filtered list"
+assert_contains "$(cat ansible/roles/packages/tasks/main.yml)" 'loop: "{{ packages_snaps }}"' "snap install loops over the arch-filtered list"
 
 # Dotfiles: never clobber an existing machine's files or git identity.
 expect_task "Read the existing git user name"
@@ -213,19 +206,65 @@ df_state='{"workstation_home": "/h", "dotfiles_status": {"stdout_lines": [" M .v
 assert_eq '[".vimrc",".claude/settings.json"]' "$(ev dotfiles_backup_files "${df_args[@]}" -e "$df_state")" \
   "back up existing files chezmoi never wrote"
 
-# macOS: casks that sudo need the become password; base runs brew update.
-assert_contains "$(cat ansible/roles/packages/tasks/darwin.yml)" 'sudo_password: "{{ ansible_become_password | default(omit) }}"' \
-  "homebrew_cask gets the become password"
-expect_task "Update Homebrew"
-assert_contains "$(cat ansible/roles/base/tasks/darwin.yml)" "update_homebrew: true" "base updates Homebrew"
-guest="$(cat scripts/vm-setup/macos-guest/run-ansible.sh)"
-assert_eq "" "$(grep -nE 'ANSIBLE_STDOUT_CALLBACK|ansible-playbook.*\|\| true' scripts/vm-setup/macos-guest/run-ansible.sh || true)" \
-  "macOS guest runner: no removed yaml callback, failures propagate"
-assert_contains "$guest" 'cd "$SHARE_ROOT"' "macOS guest runner runs from the repo root"
 
 # README accuracy.
 readme="$(cat README.md)"
 assert_contains "$readme" "cd ~/auto-workspace && uv run ansible-playbook ansible/site.yml -K --tags languages" "README tag example is runnable"
 assert_eq "" "$(grep -n "only changes what's missing" README.md || true)" "README does not claim re-runs change nothing"
+
+
+# macOS support was removed (XProtect blocks the provisioning run): no macOS code paths remain.
+mac_refs="$(git ls-files | grep -vE '^(docs/superpowers/|uv\.lock$|tests/)' \
+  | xargs grep -nliE 'macos|darwin|homebrew|brew_|mas_apps|xcode|\butm\b|softwareupdate' 2>/dev/null || true)"
+assert_eq "" "$mac_refs" "no macOS references outside tests/ and historical docs"
+plays="$(.venv/bin/python -c 'import yaml; print(",".join(p["hosts"] for p in yaml.safe_load(open("ansible/site.yml"))))')"
+assert_eq "localhost,ubuntu" "$plays" "site.yml has only the platform check and the Ubuntu play"
+
+# Idempotency (found by CI): upgrade only after the vendor repos exist, so vendor packages that were
+# already installed (runner images, machines set up by the old playbooks) are upgraded in run 1,
+# not run 2; then re-assert repo files a package upgrade (Chrome) may rewrite.
+line_of() { printf '%s\n' "$TASKS" | grep -n "$1" | head -1 | cut -d: -f1; }
+l_vinst="$(line_of 'vendor_repos : Install vendor packages')"
+l_upg="$(line_of 'Upgrade installed packages')"
+l_reassert="$(line_of 'Reassert vendor apt repositories')"
+assert_eq "true" "$([[ ${l_vinst:-0} -gt 0 && ${l_vinst:-0} -lt ${l_upg:-0} && ${l_upg:-0} -lt ${l_reassert:-0} ]] && echo true || echo false)" \
+  "system upgrade runs after vendor packages and before the repo re-assert"
+assert_contains "$(grep -A12 'Install .deb packages from vendor URLs' ansible/roles/packages/tasks/main.yml)" "retries:" \
+  "vendor .deb downloads retry (zoom.us resets connections)"
+
+# CI must provision every supported platform: the provision matrix covers exactly
+# supported_ubuntu_versions (group_vars/all.yml, the single source of truth), on amd64 and arm64.
+ci_cover="$(.venv/bin/python - <<'EOF'
+import yaml
+supported = yaml.safe_load(open("ansible/group_vars/all.yml"))["supported_ubuntu_versions"]
+try:
+    wf = yaml.safe_load(open(".github/workflows/ci.yml"))
+    runners = wf["jobs"]["provision"]["strategy"]["matrix"]["runner"]
+except (FileNotFoundError, KeyError, TypeError):
+    runners = []
+want = sorted(f"ubuntu-{v}{arch}" for v in supported for arch in ("", "-arm"))
+print("ok" if sorted(runners) == want else f"matrix={sorted(runners)} want={want}")
+EOF
+)"
+assert_eq "ok" "$ci_cover" "CI provisions every supported Ubuntu release on amd64 + arm64"
+ci="$(cat .github/workflows/ci.yml 2>/dev/null || true)"
+assert_eq "" "$(printf '%s\n' "$ci" | grep -nE 'uses: [^@]+@[^0-9a-f]|uses: [^@]+@[0-9a-f]{1,39}([^0-9a-f]|$)' | grep -v '\./' || true)" \
+  "CI actions are pinned to full commit SHAs"
+assert_contains "$ci" "contents: read" "CI token is read-only"
+
+# macOS XProtect kills any download from Galaxy's S3 artifact storage (even plain curl), while the
+# same code from GitHub is fine: every collection comes from GitHub, and installs never resolve
+# dependencies from Galaxy (--no-deps; each dependency is listed explicitly).
+req_sources="$(.venv/bin/python - <<'EOF'
+import yaml
+cols = yaml.safe_load(open("requirements.yml"))["collections"]
+print(",".join(f"{c.get('type')}:{c['name'].startswith('https://github.com/')}" for c in cols))
+EOF
+)"
+assert_eq "git:True,git:True" "$req_sources" "collections (community.general + its dependency) come from GitHub via git"
+for f in install.sh scripts/setup-dev.sh scripts/test-in-vm.sh; do
+  line="$(grep -h 'collection install' "$f")"
+  assert_contains "$line" "--no-deps" "$f installs collections with --no-deps"
+done
 
 finish

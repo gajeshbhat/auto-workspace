@@ -11,13 +11,17 @@ Never run `ansible/site.yml` or `install.sh` for real on your own machine while 
 
 ## Layout
 
-- `ansible/site.yml` – checks the platform, then runs the Ubuntu or macOS play
+- `ansible/site.yml` – checks the platform, then runs the Ubuntu play
 - `ansible/group_vars/` – all app lists and versions (data)
 - `ansible/roles/` – base, vendor_repos, packages, docker, virtualization, languages, claude_code, dotfiles
 
 ## Add an app
 
-Add one line to the matching list in `ansible/group_vars/ubuntu.yml` or `macos.yml` (a new vendor apt repo is one `vendor_repos` entry). With Claude Code: `/add-app <name>`. Then lint and run the VM test.
+Add one line to the matching list in `ansible/group_vars/ubuntu.yml` (a new vendor apt repo is one `vendor_repos` entry). With Claude Code: `/add-app <name>`. Then lint and open a PR.
+
+## CI
+
+`.github/workflows/ci.yml` runs lint on every push/PR, and real provisioning (twice; the second run must change nothing) on every supported Ubuntu release, amd64 and arm64 - on PRs, master, weekly and on demand. Supporting a new release = add it to `supported_ubuntu_versions` and the CI matrix in one commit (a test enforces it).
 
 ## Dotfiles
 

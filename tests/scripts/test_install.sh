@@ -28,7 +28,8 @@ detect() { # detect UNAME OS_RELEASE_FILE
 
 assert_eq "0|ubuntu" "$(run_status detect Linux "$TMP/noble")" "ubuntu 24.04 -> ubuntu"
 assert_eq "0|ubuntu" "$(run_status detect Linux "$TMP/resolute")" "ubuntu 26.04 -> ubuntu"
-assert_eq "0|macos" "$(run_status detect Darwin "$TMP/noble")" "Darwin -> macos"
+r="$(run_status detect Darwin "$TMP/noble")"
+assert_eq "1" "${r%%|*}" "macOS (Darwin) rejected"
 r="$(run_status detect Linux "$TMP/jammy")"
 assert_eq "1" "${r%%|*}" "ubuntu 22.04 rejected"
 assert_contains "$r" "Unsupported OS" "ubuntu 22.04 message"
@@ -87,5 +88,19 @@ assert_eq "changed" "$(cat "$TMP/clone/keep.txt")" "dirty clone: local edit pres
 # --- playbook invocation ----------------------------------------------------
 assert_contains "$(cat "$INSTALL")" "ansible/site.yml" "install.sh runs ansible/site.yml"
 assert_eq "" "$(grep -E 'linux\.yml|macos\.yml' "$INSTALL" || true)" "install.sh no longer references linux/macos.yml"
+
+# --- sudo handling: the script never reads or stores the password -----------
+# sudo and ansible-playbook -K prompt for themselves; a script that captures the login password
+# is the infostealer pattern.
+code="$(grep -vE '^[[:space:]]*#' "$INSTALL")"
+assert_eq "" "$(printf '%s\n' "$code" | grep -nE 'read +-[a-z]*s|sudo +-S|ansible_become_password|SUDO_PASSWORD' || true)" \
+  "install.sh never reads, validates or stores the password"
+assert_contains "$code" "</dev/tty" "ansible-playbook reads the -K prompt from the terminal under curl | bash"
+assert_eq "" "$(printf '%s\n' "$code" | grep -niE 'darwin|macos|brew|xcode|softwareupdate' || true)" "install.sh has no macOS code"
+
+args() { AW_SOURCED=1 bash -c 'source "$1"; CHECK="$2"; playbook_args "$3"' _ "$INSTALL" "$@"; }
+assert_eq "ansible/site.yml -K" "$(args false true)" "sudo needs a password -> -K"
+assert_eq "ansible/site.yml" "$(args false false)" "passwordless sudo -> no -K"
+assert_eq "ansible/site.yml -K --check" "$(args true true)" "--check appended"
 
 finish

@@ -15,6 +15,7 @@ Use the installed superpowers skills, in order:
 5. `superpowers:systematic-debugging`: for any failing run or lint before proposing a fix.
 6. `superpowers:verification-before-completion`: run `uv run pre-commit run -a` and `tests/run.sh` and show the output before claiming done.
 7. `superpowers:requesting-code-review`, then `superpowers:finishing-a-development-branch`.
+8. CI (`.github/workflows/ci.yml`) is the real test: open or update the PR and check it with `gh pr checks` instead of asking the user to test by hand. When adding or dropping a supported OS, change `supported_ubuntu_versions` and the CI `provision` matrix together (see AGENTS.md Conventions).
 
 Work happens on a feature branch or worktree (`superpowers:using-git-worktrees`).
 
@@ -26,7 +27,7 @@ Work happens on a feature branch or worktree (`superpowers:using-git-worktrees`)
   - Change them via the `update-config` skill.
 - **Subagent** `ansible-reviewer`: run it on any change under `ansible/` before opening a PR.
 - **Skills** (user-invoked):
-  - `/add-app <name>`: adds an app on Ubuntu and macOS, updates the README, commits.
+  - `/add-app <name>`: adds an app to the Ubuntu app lists, updates the README, commits.
   - `/test-in-vm`: runs `scripts/test-in-vm.sh` (real run + idempotency).
 
 ## Other useful installed tooling

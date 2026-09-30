@@ -6,14 +6,12 @@
     mode: "0755"
 
 - name: Download chezmoi installer
-  when: ansible_facts['os_family'] == 'Debian'
   ansible.builtin.get_url:
     url: https://get.chezmoi.io
     dest: "{{ installer_cache }}/chezmoi-install.sh"
     mode: "0755"
 
 - name: Install chezmoi
-  when: ansible_facts['os_family'] == 'Debian'
   ansible.builtin.command: sh {{ installer_cache }}/chezmoi-install.sh -b {{ local_bin }}
   args:
     creates: "{{ local_bin }}/chezmoi"

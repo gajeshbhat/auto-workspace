@@ -1,7 +1,7 @@
 [project]
 name = "auto-workspace"
 version = "0.0.0"
-description = "Ansible provisioning for Ubuntu 24.04 and macOS workstations"
+description = "Ansible provisioning for Ubuntu 24.04/26.04 workstations"
 requires-python = ">=3.12"
 dependencies = []
 

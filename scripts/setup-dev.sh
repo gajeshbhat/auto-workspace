@@ -31,7 +31,7 @@ main() {
   log "Syncing pinned toolchain from uv.lock..."
   uv sync --locked --group dev
   log "Installing Ansible collections from requirements.yml..."
-  uv run --locked ansible-galaxy collection install -r requirements.yml
+  uv run --locked ansible-galaxy collection install --no-deps -r requirements.yml
   log "Installing git pre-commit hooks..."
   uv run --locked pre-commit install
   cat <<'EOF'

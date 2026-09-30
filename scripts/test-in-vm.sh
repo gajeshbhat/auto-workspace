@@ -82,7 +82,7 @@ main() {
 
   log "Bootstrapping uv and the pinned toolchain"
   vm "curl -LsSf https://astral.sh/uv/install.sh | env UV_NO_MODIFY_PATH=1 sh >/dev/null"
-  vm "cd ~/auto-workspace && ~/.local/bin/uv sync --locked --group dev -q && ~/.local/bin/uv run --locked ansible-galaxy collection install -r requirements.yml >/dev/null"
+  vm "cd ~/auto-workspace && ~/.local/bin/uv sync --locked --group dev -q && ~/.local/bin/uv run --locked ansible-galaxy collection install --no-deps -r requirements.yml >/dev/null"
 
   local run1="$LOG_DIR/$NAME-run1.log" run2="$LOG_DIR/$NAME-run2.log"
   log "Run 1 (log: $run1)"

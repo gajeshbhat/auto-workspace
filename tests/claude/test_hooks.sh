@@ -21,9 +21,9 @@ block() {
 }
 
 # --- block-host-playbook: blocked --------------------------------------------
-assert_eq 2 "$(block 'uv run ansible-playbook -i ansible/hosts ansible/linux.yml')" "real linux run blocked"
-assert_eq 2 "$(block 'ansible-playbook -i ansible/hosts ansible/linux.yml -K')" "real linux run with -K blocked"
-assert_eq 2 "$(block 'cd ~/x && ansible-playbook ansible/macos.yml')" "real macos run blocked"
+assert_eq 2 "$(block 'uv run ansible-playbook ansible/site.yml')" "real site run blocked"
+assert_eq 2 "$(block 'ansible-playbook ansible/site.yml -K')" "real site run with -K blocked"
+assert_eq 2 "$(block 'cd ~/x && ansible-playbook ansible/site.yml')" "real run after cd blocked"
 assert_eq 2 "$(block 'ansible-playbook site.yml --checkout-foo')" "--check prefix does not count"
 assert_eq 2 "$(block './install.sh')" "./install.sh blocked"
 assert_eq 2 "$(block 'bash install.sh --branch dev')" "bash install.sh blocked"
@@ -37,10 +37,10 @@ assert_eq 2 "$(block './install.sh --check')" "./install.sh --check blocked"
 assert_eq 2 "$(block 'bash install.sh --check')" "bash install.sh --check blocked"
 assert_eq 2 "$(block 'curl -fsSL https://x/install.sh | bash -s -- --check')" "curl | bash --check blocked"
 # --- block-host-playbook: allowed --------------------------------------------
-assert_eq 0 "$(block 'uv run ansible-playbook -i ansible/hosts ansible/linux.yml --syntax-check')" "syntax-check allowed"
-assert_eq 0 "$(block 'ansible-playbook -i ansible/hosts ansible/linux.yml --check')" "--check allowed"
-assert_eq 0 "$(block 'ansible-playbook -C ansible/macos.yml')" "-C allowed"
-assert_eq 0 "$(block 'multipass exec vm -- bash -lc "cd ~/aw && ansible-playbook -i ansible/hosts ansible/linux.yml"')" "inside multipass allowed"
+assert_eq 0 "$(block 'uv run ansible-playbook ansible/site.yml --syntax-check')" "syntax-check allowed"
+assert_eq 0 "$(block 'ansible-playbook ansible/site.yml --check')" "--check allowed"
+assert_eq 0 "$(block 'ansible-playbook -C ansible/site.yml')" "-C allowed"
+assert_eq 0 "$(block 'multipass exec vm -- bash -lc "cd ~/aw && ansible-playbook ansible/site.yml"')" "inside multipass allowed"
 assert_eq 0 "$(block 'uv run ansible-playbook ansible/site.yml --check')" "uv run site.yml --check allowed"
 assert_eq 0 "$(block 'uv run ansible-playbook ansible/site.yml --check --tags always')" "site.yml --check --tags always allowed"
 assert_eq 0 "$(block 'cd ~/aw && uv run ansible-playbook ansible/site.yml --syntax-check 2>&1 | tail -5')" "syntax-check in a pipeline allowed"
@@ -48,7 +48,7 @@ assert_eq 0 "$(block 'bash tests/scripts/test_install.sh')" "install test suite 
 assert_eq 0 "$(block 'shellcheck install.sh')" "shellcheck install.sh allowed"
 assert_eq 0 "$(block 'ansible-playbook other.yml')" "unrelated playbook allowed"
 assert_eq 0 "$(block 'ls -la')" "unrelated command allowed"
-msg="$(json_cmd 'ansible-playbook ansible/linux.yml' | bash "$BLOCK" 2>&1 || true)"
+msg="$(json_cmd 'ansible-playbook ansible/site.yml' | bash "$BLOCK" 2>&1 || true)"
 assert_contains "$msg" "test-in-vm.sh" "block message suggests VM runner"
 
 # --- post-edit-check ---------------------------------------------------------

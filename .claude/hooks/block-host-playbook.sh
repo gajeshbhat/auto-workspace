@@ -12,7 +12,7 @@ if ! cmd="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("tool_in
 fi
 
 check_flag='(^|[[:space:]])(--syntax-check|--check|-C)([[:space:]]|$)'
-playbook='(linux|macos|site)\.yml'
+playbook='site\.yml'
 install_run='(^|[;&|[:space:]])(\./install\.sh|(ba)?sh[[:space:]]+([^[:space:]]*/)?install\.sh)|install\.sh[^|]*\|[[:space:]]*(ba)?sh'
 
 [[ "$cmd" == *"multipass exec"* ]] && exit 0

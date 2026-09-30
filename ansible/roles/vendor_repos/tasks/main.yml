@@ -71,6 +71,13 @@
     name: "{{ vendor_repos_enabled | map(attribute='packages') | flatten }}"
     state: present
 
+# Upgrade only now that every apt source exists: vendor packages that were already installed
+# (from older sources, or preinstalled) get their updates in this run, not the next one.
+- name: Upgrade installed packages
+  become: true
+  ansible.builtin.apt:
+    upgrade: dist
+
 # Some vendor packages (google-chrome-stable's postinst is the known offender) unconditionally
 # rewrite their own apt source file on install if one already exists, clobbering the entry we
 # just wrote. Reasserting it here converges the system to our declared vendor_repos within this

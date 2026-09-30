@@ -1,4 +1,10 @@
 ---
+# Installed from GitHub, not Galaxy (some endpoint security blocks Galaxy's S3 artifact
+# downloads). Install with `--no-deps` so nothing is resolved from Galaxy; list dependencies here.
 collections:
-  - name: community.general
+  - name: https://github.com/ansible-collections/community.general.git
+    type: git
     version: "13.4.0"
+  - name: https://github.com/ansible-collections/community.library_inventory_filtering.git
+    type: git
+    version: "1.1.5"  # dependency of community.general
