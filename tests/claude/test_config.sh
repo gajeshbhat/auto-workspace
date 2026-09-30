@@ -49,7 +49,7 @@ done
 
 assert_eq "true" "$( (( $(wc -l < "$ROOT/README.md") <= 45 )) && echo true || echo false)" "README is short (<=45 lines)"
 readme="$(cat "$ROOT/README.md")"
-for needle in "install.sh" "24.04" "26.04" "macOS" "group_vars" "Secure Boot" "docs/development.md"; do
+for needle in "install.sh" "24.04" "26.04" "group_vars" "Secure Boot" "docs/development.md"; do
   assert_contains "$readme" "$needle" "README mentions $needle"
 done
 assert_eq "true" "$( (( $(wc -l < "$ROOT/docs/development.md") <= 60 )) && echo true || echo false)" "dev guide fits one screen (<=60 lines)"

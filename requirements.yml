@@ -1,6 +1,6 @@
 ---
-# Installed from GitHub, not Galaxy: macOS XProtect blocks downloads from Galaxy's S3 artifact
-# storage. Install with `--no-deps` so nothing is resolved from Galaxy; list dependencies here.
+# Installed from GitHub, not Galaxy (some endpoint security blocks Galaxy's S3 artifact
+# downloads). Install with `--no-deps` so nothing is resolved from Galaxy; list dependencies here.
 collections:
   - name: https://github.com/ansible-collections/community.general.git
     type: git

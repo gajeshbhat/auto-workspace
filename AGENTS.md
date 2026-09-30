@@ -7,19 +7,18 @@ Instructions for AI coding agents (Claude Code, Codex, Cursor, …) and humans w
 Ansible that provisions a personal workstation, run against `localhost`:
 
 - **Ubuntu 24.04 / 26.04 LTS**
-- **macOS 15 / 26**
 
 ## Layout
 
 ```text
 ansible.cfg                   # inventory + output settings
-ansible/site.yml              # entry playbook: platform assert, then the Ubuntu or macOS play
+ansible/site.yml              # entry playbook: platform assert, then the Ubuntu play
 ansible/inventory/            # localhost inventory
 ansible/group_vars/           # app lists, versions and identity (data)
 ansible/roles/
   base/                       # OS packages, kernel headers, PATH
   vendor_repos/               # deb822 apt repos (Docker, VirtualBox, Wine, VS Code, Chrome, Zoom)
-  packages/                   # apt/snap/flatpak (Ubuntu) or Homebrew/mas (macOS) apps
+  packages/                   # apt/snap/flatpak/.deb apps
   docker/                     # Docker Engine + group
   virtualization/             # KVM/libvirt, LXD, VirtualBox extension pack
   languages/                  # rustup, Go, uv, fvm/Flutter, dotrun
@@ -28,7 +27,6 @@ ansible/roles/
 install.sh                    # one-line machine bootstrap (curl | bash)
 scripts/setup-dev.sh          # one-line dev environment setup
 scripts/test-in-vm.sh         # Multipass VM runner for site.yml
-scripts/vm-setup/             # UTM helpers for testing the macOS play in a VM
 tests/                        # shell tests (tests/run.sh)
 docs/development.md           # human development guide
 docs/superpowers/             # design specs and implementation plans
@@ -56,7 +54,7 @@ Tool versions are pinned in `pyproject.toml`/`uv.lock` and collections in `requi
 
 ## Conventions
 
-- Apps are data: add or remove them in `ansible/group_vars/ubuntu.yml` or `macos.yml`, not as new tasks.
+- Apps are data: add or remove them in `ansible/group_vars/ubuntu.yml`, not as new tasks.
 - Vendor apt repos use `ansible.builtin.deb822_repository` with `signed_by: <key URL>`; never `apt-key`, never a hand-written `.list` file.
 - Every variable a role registers or sets is prefixed with the role's name (e.g. `docker_service_name`).
 - FQCN for every module (`ansible.builtin.*`, `community.general.*`, …).

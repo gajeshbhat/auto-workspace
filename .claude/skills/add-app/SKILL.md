@@ -1,6 +1,6 @@
 ---
 name: add-app
-description: Add a new application to the auto-workspace playbooks (Ubuntu and macOS), document it in the README, lint, and commit it.
+description: Add a new application to the auto-workspace Ubuntu playbooks, document it in the README, lint, and commit it.
 disable-model-invocation: true
 argument-hint: <app name>
 ---
@@ -21,7 +21,6 @@ State which method you chose and why.
 ## 2. Add the app as data
 
 - Ubuntu, in `ansible/group_vars/ubuntu.yml`: add the package name to `apt_packages`, `snap_packages`, `flatpak_packages` or `deb_packages`. A vendor apt repo (method 4) instead gets a new entry in `vendor_repos` with a `key` URL and `architectures`.
-- macOS, in `ansible/group_vars/macos.yml`: add the Homebrew formula to `brew_formulae`, the cask to `brew_casks`, or `{id: <n>, name: "<App>"}` to `mas_apps`. Confirm the name with `brew info --cask <name>` when on macOS; otherwise cite formulae.brew.sh. If there is no macOS build, say so in the commit body.
 
 No new tasks — the `packages` and `vendor_repos` roles already loop over these lists.
 

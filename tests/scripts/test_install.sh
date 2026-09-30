@@ -28,7 +28,8 @@ detect() { # detect UNAME OS_RELEASE_FILE
 
 assert_eq "0|ubuntu" "$(run_status detect Linux "$TMP/noble")" "ubuntu 24.04 -> ubuntu"
 assert_eq "0|ubuntu" "$(run_status detect Linux "$TMP/resolute")" "ubuntu 26.04 -> ubuntu"
-assert_eq "0|macos" "$(run_status detect Darwin "$TMP/noble")" "Darwin -> macos"
+r="$(run_status detect Darwin "$TMP/noble")"
+assert_eq "1" "${r%%|*}" "macOS (Darwin) rejected"
 r="$(run_status detect Linux "$TMP/jammy")"
 assert_eq "1" "${r%%|*}" "ubuntu 22.04 rejected"
 assert_contains "$r" "Unsupported OS" "ubuntu 22.04 message"
@@ -89,26 +90,17 @@ assert_contains "$(cat "$INSTALL")" "ansible/site.yml" "install.sh runs ansible/
 assert_eq "" "$(grep -E 'linux\.yml|macos\.yml' "$INSTALL" || true)" "install.sh no longer references linux/macos.yml"
 
 # --- sudo handling: the script never reads or stores the password -----------
-# A pasted `curl | bash` that reads the login password, checks it with `sudo -S` and writes it to
-# a file is the infostealer ("ClickFix") pattern macOS blocks as "Malicious Script Blocked".
+# sudo and ansible-playbook -K prompt for themselves; a script that captures the login password
+# is the infostealer pattern.
 code="$(grep -vE '^[[:space:]]*#' "$INSTALL")"
-assert_eq "" "$(printf '%s\n' "$code" | grep -nE 'read +-[a-z]*s|sudo +-S|aw-become|ansible_become_password|SUDO_PASSWORD' || true)" \
+assert_eq "" "$(printf '%s\n' "$code" | grep -nE 'read +-[a-z]*s|sudo +-S|ansible_become_password|SUDO_PASSWORD' || true)" \
   "install.sh never reads, validates or stores the password"
-assert_contains "$code" "sudo -v" "install.sh primes sudo with its own prompt (sudo -v)"
-assert_contains "$code" "</dev/tty" "ansible-playbook reads prompts from the terminal under curl | bash"
+assert_contains "$code" "</dev/tty" "ansible-playbook reads the -K prompt from the terminal under curl | bash"
+assert_eq "" "$(printf '%s\n' "$code" | grep -niE 'darwin|macos|brew|xcode|softwareupdate' || true)" "install.sh has no macOS code"
 
-args() { AW_SOURCED=1 bash -c 'source "$1"; CHECK="$2"; playbook_args "$3" "$4"' _ "$INSTALL" "$@"; }
-assert_eq "ansible/site.yml -K" "$(args false ubuntu true)" "ubuntu + sudo needs a password -> -K"
-assert_eq "ansible/site.yml" "$(args false ubuntu false)" "ubuntu + passwordless sudo -> no -K"
-assert_eq "ansible/site.yml" "$(args false macos true)" "macos -> no -K (the macOS play prompts itself)"
-assert_eq "ansible/site.yml -K --check" "$(args true ubuntu true)" "--check appended"
-
-# --- headless Xcode Command Line Tools --------------------------------------
-clt() { AW_SOURCED=1 bash -c 'source "$1"; clt_label_from "$2"' _ "$INSTALL" "$1"; }
-new_fmt=$'Software Update Tool\n\nFinding available software\nSoftware Update found the following new or updated software:\n* Label: Command Line Tools for Xcode-16.0\n\tTitle: Command Line Tools for Xcode, Version: 16.0, Size: 751464KiB, Recommended: YES,\n* Label: Command Line Tools for Xcode-26.0\n\tTitle: Command Line Tools for Xcode, Version: 26.0, Size: 800000KiB, Recommended: YES,'
-old_fmt=$'Software Update found the following new or updated software:\n   * Command Line Tools (macOS High Sierra version 10.13) for Xcode-10.1\n\tCommand Line Tools (macOS High Sierra version 10.13) for Xcode (10.1), 190180K [recommended]'
-assert_eq "Command Line Tools for Xcode-26.0" "$(clt "$new_fmt")" "CLT label (current softwareupdate format, newest wins)"
-assert_eq "Command Line Tools (macOS High Sierra version 10.13) for Xcode-10.1" "$(clt "$old_fmt")" "CLT label (legacy format)"
-assert_eq "" "$(clt $'No new software available.')" "no CLT label when nothing offered"
+args() { AW_SOURCED=1 bash -c 'source "$1"; CHECK="$2"; playbook_args "$3"' _ "$INSTALL" "$@"; }
+assert_eq "ansible/site.yml -K" "$(args false true)" "sudo needs a password -> -K"
+assert_eq "ansible/site.yml" "$(args false false)" "passwordless sudo -> no -K"
+assert_eq "ansible/site.yml -K --check" "$(args true true)" "--check appended"
 
 finish

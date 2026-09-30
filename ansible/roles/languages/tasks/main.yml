@@ -5,13 +5,8 @@
     state: directory
     mode: "0755"
 
-- name: Ubuntu language toolchains
+- name: System toolchains
   ansible.builtin.import_tasks: debian.yml
-  when: ansible_facts['os_family'] == 'Debian'
 
-- name: MacOS language toolchains
-  ansible.builtin.import_tasks: darwin.yml
-  when: ansible_facts['os_family'] == 'Darwin'
-
-- name: Cross-platform language toolchains
+- name: User toolchains
   ansible.builtin.import_tasks: common.yml

@@ -1,8 +1,21 @@
 ---
-- name: Ubuntu base
-  ansible.builtin.import_tasks: debian.yml
-  when: ansible_facts['os_family'] == 'Debian'
+- name: Upgrade installed packages
+  become: true
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+    upgrade: dist
 
-- name: MacOS base
-  ansible.builtin.import_tasks: darwin.yml
-  when: ansible_facts['os_family'] == 'Darwin'
+- name: Install base packages
+  become: true
+  ansible.builtin.apt:
+    name: "{{ base_packages }}"
+    state: present
+
+- name: Add Flathub remote
+  become: true
+  community.general.flatpak_remote:
+    name: flathub
+    flatpakrepo_url: https://dl.flathub.org/repo/flathub.flatpakrepo
+    method: system
+    state: present

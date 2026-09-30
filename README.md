@@ -1,6 +1,6 @@
 # auto-workspace
 
-Ansible that sets up my workstation: **Ubuntu 24.04 / 26.04 LTS** and **macOS 15 / 26**.
+Ansible that sets up my workstation: **Ubuntu 24.04 / 26.04 LTS**.
 
 ## Install
 
@@ -14,20 +14,19 @@ Run one part: `cd ~/auto-workspace && uv run ansible-playbook ansible/site.yml -
 ## What you get
 
 - **Dev:** git, gh, vim, tmux, screen, build tools, Rust (rustup), Go, uv, Flutter (fvm), dotrun, Claude Code
-- **Containers & VMs:** Docker, KVM/libvirt, LXD, VirtualBox 7.2, Multipass (UTM on macOS)
+- **Containers & VMs:** Docker, KVM/libvirt, LXD, VirtualBox 7.2, Multipass
 - **Apps:** Chrome, VS Code, Spotify, VLC, LibreOffice, Proton VPN, Proton Pass, Zoom, LocalSend, Wine, 0 A.D., …
 - **Dotfiles:** [chezmoi](https://chezmoi.io) from `gajeshbhat/dotfiles`, incl. Claude Code settings and plugins. Back up local edits with `dotfiles-backup`.
 
 ## Customize
 
-Edit the lists in `ansible/group_vars/`: `ubuntu.yml` (apt, vendor repos, snaps, Flatpaks), `macos.yml` (Homebrew, App Store), `all.yml` (git identity, versions, dotfiles repo).
+Edit the lists in `ansible/group_vars/`: `ubuntu.yml` (apt, vendor repos, snaps, Flatpaks), `all.yml` (git identity, versions, dotfiles repo).
 
 ## Notes
 
 - Log out and back in after the first run (new groups: docker, libvirt, kvm, lxd, vboxusers).
 - Secure Boot: VirtualBox kernel modules need a one-time MOK enrollment prompt on reboot.
-- Password prompts come from `sudo` and Ansible themselves (the script never handles it): once for `sudo` up front, once more for Ansible. Xcode Command Line Tools install headlessly. On macOS, run `ansible-playbook` without `-K`; the play prompts itself.
-- macOS: sign in to the App Store first (for iA Writer).
+- Password prompts come from `sudo` and Ansible themselves (the script never handles it): `sudo` for git/curl if missing, then Ansible's `-K`.
 - Machines set up by the old playbooks keep the VS Code snap and the 0 A.D. deb next to the new apt/Flatpak installs; remove them with `sudo snap remove code` and `sudo apt remove 0ad`.
 - Existing dotfiles are saved as `<file>.pre-chezmoi` before the first apply; your old `~/.gitconfig` becomes `~/.gitconfig.local`, which still applies.
 

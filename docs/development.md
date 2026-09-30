@@ -11,13 +11,13 @@ Never run `ansible/site.yml` or `install.sh` for real on your own machine while 
 
 ## Layout
 
-- `ansible/site.yml` – checks the platform, then runs the Ubuntu or macOS play
+- `ansible/site.yml` – checks the platform, then runs the Ubuntu play
 - `ansible/group_vars/` – all app lists and versions (data)
 - `ansible/roles/` – base, vendor_repos, packages, docker, virtualization, languages, claude_code, dotfiles
 
 ## Add an app
 
-Add one line to the matching list in `ansible/group_vars/ubuntu.yml` or `macos.yml` (a new vendor apt repo is one `vendor_repos` entry). With Claude Code: `/add-app <name>`. Then lint and run the VM test.
+Add one line to the matching list in `ansible/group_vars/ubuntu.yml` (a new vendor apt repo is one `vendor_repos` entry). With Claude Code: `/add-app <name>`. Then lint and run the VM test.
 
 ## Dotfiles
 

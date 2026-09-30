@@ -26,7 +26,7 @@ Work happens on a feature branch or worktree (`superpowers:using-git-worktrees`)
   - Change them via the `update-config` skill.
 - **Subagent** `ansible-reviewer`: run it on any change under `ansible/` before opening a PR.
 - **Skills** (user-invoked):
-  - `/add-app <name>`: adds an app on Ubuntu and macOS, updates the README, commits.
+  - `/add-app <name>`: adds an app to the Ubuntu app lists, updates the README, commits.
   - `/test-in-vm`: runs `scripts/test-in-vm.sh` (real run + idempotency).
 
 ## Other useful installed tooling

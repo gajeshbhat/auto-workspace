@@ -3,9 +3,10 @@
 #   curl -fsSL https://raw.githubusercontent.com/gajeshbhat/auto-workspace/master/install.sh | bash
 #   curl -fsSL .../install.sh | bash -s -- --check --branch <branch> --dir <dir>
 # Installs git + uv, clones/updates the repo, syncs the pinned toolchain and
-# runs the matching playbook. Everything runs from main() on the last line, so a
+# runs the playbook. Everything runs from main() on the last line, so a
 # partially downloaded script never executes.
-# Supports Ubuntu 24.04/26.04 and macOS 15/26.
+# Supports Ubuntu 24.04/26.04. The script never reads or stores your password:
+# sudo and ansible-playbook -K prompt for it themselves.
 set -euo pipefail
 
 REPO_URL="${AW_REPO_URL:-https://github.com/gajeshbhat/auto-workspace.git}"
@@ -42,13 +43,9 @@ parse_args() {
   done
 }
 
-# Prints the platform (ubuntu | macos) or fails. Versions are enforced by the playbook's assert.
+# Succeeds on Ubuntu 24.04/26.04; otherwise explains and fails.
 detect_platform() {
   local kernel="${AW_UNAME:-$(uname -s)}" id="" version=""
-  if [[ "$kernel" == "Darwin" ]]; then
-    echo "macos"
-    return 0
-  fi
   if [[ "$kernel" == "Linux" && -r "$OS_RELEASE_FILE" ]]; then
     # shellcheck source=/dev/null
     id="$(. "$OS_RELEASE_FILE" && echo "${ID:-}")"
@@ -59,76 +56,15 @@ detect_platform() {
       return 0
     fi
   fi
-  err "Unsupported OS ($kernel ${id:-} ${version:-}). auto-workspace supports Ubuntu 24.04/26.04 and macOS 15/26."
+  err "Unsupported OS ($kernel ${id:-} ${version:-}). auto-workspace supports Ubuntu 24.04/26.04."
   return 1
 }
 
-# Prints the newest "Command Line Tools" label from `softwareupdate -l` output, or nothing.
-clt_label_from() {
-  printf '%s\n' "$1" | sed -n -e 's/^\* Label: \(Command Line Tools.*\)$/\1/p' \
-    -e 's/^ *\* \(Command Line Tools.*\)$/\1/p' | tail -n 1
-}
-
-# Installs the Xcode Command Line Tools without the GUI dialog when softwareupdate offers them
-# (the same technique Homebrew's installer uses); falls back to the dialog otherwise.
-install_clt() {
-  xcode-select -p >/dev/null 2>&1 && return
-  local flag=/tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress label
-  log "Installing Xcode Command Line Tools (headless)..."
-  touch "$flag"
-  label="$(clt_label_from "$(softwareupdate -l 2>&1 || true)")"
-  if [[ -n "$label" ]]; then
-    sudo softwareupdate -i "$label" --verbose
-  fi
-  rm -f "$flag"
-  if ! xcode-select -p >/dev/null 2>&1; then
-    log "softwareupdate did not install them - click Install in the macOS dialog..."
-    xcode-select --install || true
-    until xcode-select -p >/dev/null 2>&1; do sleep 10; done
-  fi
-}
-
-# This script never reads or stores the password: a pasted `curl | bash` that does is exactly
-# what macOS blocks as "Malicious Script Blocked". sudo prompts for itself (sudo -v), and a
-# background loop keeps the timestamp fresh through the long CLT/Homebrew installs (Homebrew's
-# non-interactive installer only uses `sudo -n`).
-prime_sudo() {
-  log "sudo may ask for your password (the script never sees it)."
-  sudo -v
-  while kill -0 "$$" 2>/dev/null; do
-    sudo -n true 2>/dev/null
-    sleep 50
-  done &
-  SUDO_KEEPALIVE_PID=$!
-  # shellcheck disable=SC2064  # expand now: stop this exact loop on any exit
-  trap "kill $SUDO_KEEPALIVE_PID 2>/dev/null || true" EXIT
-}
-
-# 0 when sudo works without any password (NOPASSWD), ignoring a cached timestamp.
-sudo_is_passwordless() {
-  sudo -k -n true 2>/dev/null
-}
-
 ensure_prereqs() {
-  local platform="$1"
-  if [[ "$platform" == "ubuntu" ]]; then
-    if ! command -v git >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1; then
-      log "Installing git and curl (sudo)..."
-      sudo apt-get update -y
-      sudo apt-get install -y git curl
-    fi
-    return
-  fi
-  install_clt
-  if ! command -v brew >/dev/null 2>&1 && [[ ! -x /opt/homebrew/bin/brew && ! -x /usr/local/bin/brew ]]; then
-    log "Installing Homebrew..."
-    # prime_sudo keeps the sudo timestamp fresh; the installer only uses `sudo -n`
-    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  fi
-  if [[ -x /opt/homebrew/bin/brew ]]; then
-    eval "$(/opt/homebrew/bin/brew shellenv)"
-  elif [[ -x /usr/local/bin/brew ]]; then
-    eval "$(/usr/local/bin/brew shellenv)"
+  if ! command -v git >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1; then
+    log "Installing git and curl (sudo)..."
+    sudo apt-get update -y
+    sudo apt-get install -y git curl
   fi
 }
 
@@ -163,26 +99,29 @@ sync_repo() {
   fi
 }
 
-# playbook_args PLATFORM NEEDS_PASSWORD(true|false) -> ansible-playbook arguments.
-# Ubuntu uses -K; the macOS play prompts for ansible_become_password itself (Homebrew casks need
-# it as a variable, which -K never sets).
+# 0 when sudo works without any password (NOPASSWD), ignoring a cached timestamp.
+sudo_is_passwordless() {
+  sudo -k -n true 2>/dev/null
+}
+
+# playbook_args NEEDS_PASSWORD(true|false) -> ansible-playbook arguments.
 playbook_args() {
   local args=(ansible/site.yml)
-  if [[ "$1" == "ubuntu" && "$2" == "true" ]]; then args+=(-K); fi
+  if [[ "$1" == "true" ]]; then args+=(-K); fi
   if [[ "$CHECK" == "true" ]]; then args+=(--check); fi
   echo "${args[*]}"
 }
 
-run_playbook() { # run_playbook PLATFORM
+run_playbook() {
   local args needs_password=true
   cd "$DIR"
   log "Syncing pinned toolchain..."
   uv sync --locked --group dev
   uv run --locked ansible-galaxy collection install --no-deps -r requirements.yml
   if sudo_is_passwordless; then needs_password=false; fi
-  read -ra args <<<"$(playbook_args "$1" "$needs_password")"
+  read -ra args <<<"$(playbook_args "$needs_password")"
   log "Running: ansible-playbook ${args[*]}"
-  # stdin from the terminal: under `curl | bash` it is the pipe, and Ansible's prompts need a tty.
+  # stdin from the terminal: under `curl | bash` it is the pipe, and the -K prompt needs a tty.
   if (exec </dev/tty) 2>/dev/null; then
     uv run --locked ansible-playbook "${args[@]}" </dev/tty
   else
@@ -192,14 +131,12 @@ run_playbook() { # run_playbook PLATFORM
 
 main() {
   parse_args "$@"
-  local platform
-  platform="$(detect_platform)"
-  log "Target: $platform (branch $BRANCH, dir $DIR, check=$CHECK)"
-  prime_sudo
-  ensure_prereqs "$platform"
+  detect_platform >/dev/null
+  log "Target: Ubuntu (branch $BRANCH, dir $DIR, check=$CHECK)"
+  ensure_prereqs
   ensure_uv
   sync_repo
-  run_playbook "$platform"
+  run_playbook
   log "Done. Log out and back in to apply group changes; a reboot may be required."
 }
 
