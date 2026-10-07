@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Real provisioning test in a throwaway Multipass VM:
-#   scripts/test-in-vm.sh [--release 24.04|26.04] [--keep] [--tags <tags>] [--dotfiles-branch <b>]
+# Real provisioning test in a throwaway Multipass VM (or, with --workshop, a Workshop container:
+# faster, but shares the host kernel, so kernel modules and strict snap confinement go untested):
+#   scripts/test-in-vm.sh [--release 24.04|26.04] [--workshop] [--keep] [--tags <tags>] [--dotfiles-branch <b>]
 # Streams this working tree into the VM (tar over stdin, so hidden/worktree paths work), runs
 # ansible/site.yml, then runs it again and fails if the second run changed anything.
 set -euo pipefail
@@ -8,6 +9,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RELEASE="24.04"
 KEEP="false"
+WORKSHOP="false"
 TAGS=""
 DOTFILES_BRANCH=""
 NAME=""
@@ -19,7 +21,7 @@ err() { echo "[!] $*" >&2; }
 
 usage() {
   cat <<EOF
-Usage: scripts/test-in-vm.sh [--release 24.04|26.04] [--keep] [--tags <tags>] [--dotfiles-branch <b>] [--name <vm>] [--no-second-run]
+Usage: scripts/test-in-vm.sh [--release 24.04|26.04] [--workshop] [--keep] [--tags <tags>] [--dotfiles-branch <b>] [--name <vm>] [--no-second-run]
 EOF
 }
 
@@ -28,6 +30,7 @@ parse_args() {
     case "$1" in
       --release) RELEASE="${2:-}"; shift 2 ;;
       --keep) KEEP="true"; shift ;;
+      --workshop) WORKSHOP="true"; shift ;;
       --tags) TAGS="${2:-}"; shift 2 ;;
       --dotfiles-branch) DOTFILES_BRANCH="${2:-}"; shift 2 ;;
       --name) NAME="${2:-}"; shift 2 ;;
@@ -50,7 +53,13 @@ recap_changed() {
   echo "${n:-missing}"
 }
 
-vm() { multipass exec "$NAME" -- bash -lc "$1"; }
+vm() {
+  if [[ "$WORKSHOP" == "true" ]]; then
+    workshop -p "$ROOT" exec "$NAME" -- bash -lc "$1"
+  else
+    multipass exec "$NAME" -- bash -lc "$1"
+  fi
+}
 
 run_playbook() { # run_playbook LOGFILE
   local extra=""
@@ -62,7 +71,9 @@ run_playbook() { # run_playbook LOGFILE
 
 cleanup() {
   if [[ "$KEEP" == "true" ]]; then
-    log "Keeping VM $NAME (multipass delete $NAME && multipass purge)"
+    log "Keeping $NAME"
+  elif [[ "$WORKSHOP" == "true" ]]; then
+    workshop -p "$ROOT" remove "$NAME"
   else
     multipass delete "$NAME" && multipass purge
   fi
@@ -70,15 +81,21 @@ cleanup() {
 
 main() {
   parse_args "$@"
-  command -v multipass >/dev/null 2>&1 || { err "multipass is not installed"; exit 1; }
-  log "Launching $NAME (Ubuntu $RELEASE, 4 CPU, 8G, 40G)"
-  multipass launch "$RELEASE" --name "$NAME" --cpus 4 --memory 8G --disk 40G
+  if [[ "$WORKSHOP" == "true" ]]; then
+    NAME="aw-test-${RELEASE//./}" # the definition in .workshop/
+    log "Launching workshop $NAME (Ubuntu $RELEASE)"
+    workshop -p "$ROOT" restore "$NAME" 2>/dev/null || workshop -p "$ROOT" launch "$NAME"
+  else
+    command -v multipass >/dev/null 2>&1 || { err "multipass is not installed"; exit 1; }
+    log "Launching $NAME (Ubuntu $RELEASE, 4 CPU, 8G, 40G)"
+    multipass launch "$RELEASE" --name "$NAME" --cpus 4 --memory 8G --disk 40G
+  fi
   trap cleanup EXIT
 
   log "Copying working tree into the VM"
   vm "rm -rf ~/auto-workspace && mkdir -p ~/auto-workspace"
   (cd "$ROOT" && git ls-files -co --exclude-standard -z | tar --null -cf - -T -) \
-    | multipass exec "$NAME" -- tar -xf - -C /home/ubuntu/auto-workspace
+    | vm "tar -xf - -C ~/auto-workspace"
 
   log "Bootstrapping uv and the pinned toolchain"
   vm "curl -LsSf https://astral.sh/uv/install.sh | env UV_NO_MODIFY_PATH=1 sh >/dev/null"

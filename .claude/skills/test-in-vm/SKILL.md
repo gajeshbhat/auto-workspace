@@ -2,7 +2,7 @@
 name: test-in-vm
 description: Run ansible/site.yml for real in a throwaway Multipass VM (Ubuntu 24.04 or 26.04), then an idempotency run, and report failures and non-idempotent tasks.
 disable-model-invocation: true
-argument-hint: "[--release 24.04|26.04] [--tags <tags>] [--dotfiles-branch <b>] [--keep]"
+argument-hint: "[--release 24.04|26.04] [--workshop] [--tags <tags>] [--dotfiles-branch <b>] [--keep]"
 ---
 
 # Test site.yml in a Multipass VM
