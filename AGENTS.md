@@ -41,6 +41,7 @@ uv run pre-commit run -a      # all linters: yamllint, ansible-lint, shellcheck,
 tests/run.sh                  # shell tests for install.sh and the Claude hooks
 uv run ansible-playbook ansible/site.yml --syntax-check
 scripts/test-in-vm.sh --release 26.04   # real run + idempotency in a Multipass VM
+scripts/test-in-vm.sh --workshop --tags languages   # same, in a Workshop container (shares the host kernel; ~1h for a full run)
 ```
 
 Tool versions are pinned in `pyproject.toml`/`uv.lock` and collections in `requirements.yml`. Change them deliberately, never float them.

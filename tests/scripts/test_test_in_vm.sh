@@ -15,6 +15,7 @@ parsed() { TIV_SOURCED=1 bash -c 'source "$1"; shift; parse_args "$@"; echo "$RE
 assert_eq "24.04|false|||true" "$(parsed)" "defaults"
 assert_eq "26.04|true|base,repos|feature/chezmoi|false" \
   "$(parsed --release 26.04 --keep --tags base,repos --dotfiles-branch feature/chezmoi --no-second-run)" "all flags"
+assert_eq "false|true" "$(TIV_SOURCED=1 bash -c 'source "$1"; parse_args; a=$WORKSHOP; parse_args --workshop; echo "$a|$WORKSHOP"' _ "$TIV")" "--workshop"
 r="$(run_status bash "$TIV" --release 22.04)"
 assert_eq "2" "${r%%|*}" "unsupported release exits 2"
 r="$(run_status bash "$TIV" --bogus)"

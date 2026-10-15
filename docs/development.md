@@ -5,6 +5,7 @@
 uv run pre-commit run -a       # yamllint, ansible-lint (production), shellcheck, shell tests
 tests/run.sh                   # shell + playbook structure tests
 scripts/test-in-vm.sh --release 26.04   # real run + idempotency check in a Multipass VM
+scripts/test-in-vm.sh --workshop        # same, in a Workshop container: no VM, but shares the host kernel
 ```
 
 Never run `ansible/site.yml` or `install.sh` for real on your own machine while developing; use the VM script.
