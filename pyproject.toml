@@ -7,7 +7,7 @@ dependencies = []
 
 [dependency-groups]
 dev = [
-  "ansible-core==2.21.5",
+  "ansible-core==2.21.6",
   "ansible-lint==26.10.1",
   "yamllint==1.38.0",
   "pre-commit==4.7.0",
